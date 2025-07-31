@@ -30,7 +30,7 @@ mysql = MySQL(app)
 lda_model = LdaModel.load("model/lda/model_lda_terbaik.model")
 dictionary = Dictionary.load("model/lda/dictionary.dict")
 fasttext_model = FastText.load("model/fasttext/fasttext_model.model")
-df_doc_vectors = pd.read_csv('dokumen_vektor.csv')
+df_doc_vectors = pd.read_csv("model/fasttext/dokumen_vektor.csv")
 
 # Identifikasi indikator/parameter vektor (judul)
 doc_titles = df_doc_vectors['judul'].values

@@ -1,0 +1,27 @@
+.container {
+  position: relative;
+}
+.text {
+  display: inline-block;
+}
+.cursor {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  background-color: #004b8f;
+  border-radius: 50%;
+  animation: blink 1s infinite;
+  position: relative;
+  top: -0.5em;
+}
+@keyframes blink {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

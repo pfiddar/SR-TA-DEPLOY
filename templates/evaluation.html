@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Evaluation Results</title>
+  </head>
+  <body>
+    <h1>Evaluation Results</h1>
+    <p>Precision: {{ evaluation_results.precision }}</p>
+    <p>Recall: {{ evaluation_results.recall }}</p>
+    <p>True Positives: {{ evaluation_results.true_positives }}</p>
+    <h2>Retrieved Indices</h2>
+    <ul>
+      {% for index in evaluation_results.retrieved_indices %}
+      <li>{{ index }}</li>
+      {% endfor %}
+    </ul>
+    <h2>True Relevant Indices</h2>
+    <ul>
+      {% for index in evaluation_results.true_relevant_indices %}
+      <li>{{ index }}</li>
+      {% endfor %}
+    </ul>
+  </body>
+</html>
