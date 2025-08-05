@@ -14,6 +14,8 @@ from gensim.models import LdaModel
 from gensim.corpora import Dictionary
 from gensim.models import FastText
 import numpy as np
+import json
+import MySQLdb.cursors
 
 app = Flask(__name__, template_folder='templates')
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
@@ -160,6 +162,7 @@ def hasil_search_ta():
 
     # === Sistem Rekomendasi 
     # Identifikasi topik dokumen dari query
+    @cache.memoize(timeout=300)
     def get_topic(text):
         bow_vector = dictionary.doc2bow(preprocess_to_tokens(text)) # Menentukan jumlah kemunculan setiap kata dari query
         topics = lda_model.get_document_topics(bow_vector) # Menentukan distribusi topik query
@@ -169,6 +172,8 @@ def hasil_search_ta():
         dominant_topic = topics[0][0]
         return dominant_topic
     
+    # Representasi vektor query
+    @cache.memoize(timeout=300)
     def get_fasttext_vector(text):
         tokens = preprocess_to_tokens(text)
         vectors = [fasttext_model.wv[word] for word in tokens if word in fasttext_model.wv]
@@ -180,28 +185,27 @@ def hasil_search_ta():
     dominant_topic = get_topic(title)
     if dominant_topic == -1:
         return render_template("output.html")
-    
-    # Ambil dokumen dengan topik sama
-    @cache.memoize(timeout=300)
-    def get_doc_by_topic(topic_id):
-        with mysql.connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM documents WHERE topik_dominan = %s", (topic_id,))
-            return cursor.fetchball()
 
     # Similarity antara query dengan dokumen terpilih
     @cache.memoize(timeout=300)
     def get_top_similarities(query_title, dominant_topic):
         query_vector = get_fasttext_vector(query_title)
-        dokumen_filter = get_doc_by_topic(dominant_topic)
-    
+        
+        with mysql.connection.cursor(MySQLdb.cursors.DictCursor) as cursor:
+            # Ambil dokumen dengan topik sama
+            cursor.execute("SELECT d.judul, dv.vector FROM documents d JOIN vector_docs dv ON d.id = dv.id_doc WHERE d.topik_dominan = %s", (dominant_topic,))
+            rows = cursor.fetchall()
+
         similarities = []
-        for dok in dokumen_filter:
-            # Mencari indeks dokumen
-            index = df_doc_vectors[df_doc_vectors['judul'] == dok['judul']].index
-            if not index.empty:
-                doc_vec = doc_vectors[index[0]]
+        for row in rows:
+            try:
+                doc_vec = np.array(json.loads(row['vector']))
                 sim = cosine_similarity([query_vector], [doc_vec])[0][0]
-                similarities.append({'judul': dok['judul'], 'similarity': sim})
+                similarities.append({'judul': row['judul'], 'similarity': sim})
+            except Exception as e:
+                print("Error parsing vektor untuk judul: ", row['judul'], e)
+                continue
+
         # Mengurutkan similarity tertinggi
         return sorted(similarities, key=lambda x: -x['similarity'])[:5]
     
