@@ -32,6 +32,9 @@ dictionary = Dictionary.load("model/lda/dictionary.dict")
 fasttext_model = FastText.load("model/fasttext/fasttext_model.model")
 df_doc_vectors = pd.read_csv("model/fasttext/dokumen_vektor.csv")
 
+# Load dataset
+df = pd.read_csv('dataset_ta.csv')
+
 # Identifikasi indikator/parameter vektor (judul)
 doc_titles = df_doc_vectors['judul'].values
 doc_vectors = df_doc_vectors.drop(columns=['judul']).values
@@ -49,13 +52,17 @@ stop_words = set(stopwords.words('indonesian'))
 custom_stopwords = set(open('custom_stoplist.txt').read().split())
 combined_stopwords = stop_words.union(custom_stopwords)
 
-@cache.memoize(timeout=250)  # Cache results for 5 minutes
+@cache.memoize(timeout=300)  # Cache results for 5 minutes
 def preprocess_text(text):
     text = text.lower()
     text = text.translate(str.maketrans('', '', string.punctuation))
     tokens = word_tokenize(text)
     tokens = [stemmer.stem(word) for word in tokens if word.isalpha() and word not in combined_stopwords]
     return ' '.join(tokens)
+
+@cache.memoize(timeout=300)
+def preprocess_to_tokens(text):
+    return preprocess_text(text).split()
 
 @app.route('/')
 def index():
@@ -74,9 +81,6 @@ def hasil_search_ta():
     title = request.args.get('judul')
     if not title:
         return redirect(url_for('search_ta'))
-
-    # Load dataset
-    df = pd.read_csv('dataset_ta.csv')
 
     # Check if the documents table is empty
     with mysql.connection.cursor() as cursor:
@@ -157,7 +161,7 @@ def hasil_search_ta():
     # === Sistem Rekomendasi 
     # Identifikasi topik dokumen dari query
     def get_topic(text):
-        bow_vector = dictionary.doc2bow(preprocess_text(text)) # Menentukan jumlah kemunculan setiap kata dari query
+        bow_vector = dictionary.doc2bow(preprocess_to_tokens(text)) # Menentukan jumlah kemunculan setiap kata dari query
         topics = lda_model.get_document_topics(bow_vector) # Menentukan distribusi topik query
         if not topics:
             return -1
@@ -166,8 +170,8 @@ def hasil_search_ta():
         return dominant_topic
     
     def get_fasttext_vector(text):
-        tokens = preprocess_text(text)
-        vectors = [fasttext_model.mv[word] for word in tokens if word in fasttext_model.mv]
+        tokens = preprocess_to_tokens(text)
+        vectors = [fasttext_model.wv[word] for word in tokens if word in fasttext_model.wv]
         if not vectors:
             return np.zeros(fasttext_model.vector_size)
         return np.mean(vectors, axis=0)
@@ -178,25 +182,31 @@ def hasil_search_ta():
         return render_template("output.html")
     
     # Ambil dokumen dengan topik sama
-    cursor.execute("SELECT * FROM documents WHERE topik_dominan = %s", (dominant_topic,))
-    dokumen_filter = cursor.fetchball()
-
-    # vektorisasi query
-    query_vector = get_fasttext_vector(title)
+    @cache.memoize(timeout=300)
+    def get_doc_by_topic(topic_id):
+        with mysql.connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM documents WHERE topik_dominan = %s", (topic_id,))
+            return cursor.fetchball()
 
     # Similarity antara query dengan dokumen terpilih
-    similarities = []
-
-    for dok in dokumen_filter:
-        # Mencari indeks dokumen
-        index = df_doc_vectors[df_doc_vectors['judul'] == dok['judul']].index
-        if not index.empty:
-            doc_vec = doc_vectors[index[0]]
-            sim = cosine_similarity([query_vector], [doc_vectors])[0][0]
-            similarities.append({'judul': dok['judul'], 'similarity': sim})
-
-    # Mengurutkan similarity tertinggi
-    top_results = sorted(similarities, key=lambda x: -x['similarity'])[:5]
+    @cache.memoize(timeout=300)
+    def get_top_similarities(query_title, dominant_topic):
+        query_vector = get_fasttext_vector(query_title)
+        dokumen_filter = get_doc_by_topic(dominant_topic)
+    
+        similarities = []
+        for dok in dokumen_filter:
+            # Mencari indeks dokumen
+            index = df_doc_vectors[df_doc_vectors['judul'] == dok['judul']].index
+            if not index.empty:
+                doc_vec = doc_vectors[index[0]]
+                sim = cosine_similarity([query_vector], [doc_vec])[0][0]
+                similarities.append({'judul': dok['judul'], 'similarity': sim})
+        # Mengurutkan similarity tertinggi
+        return sorted(similarities, key=lambda x: -x['similarity'])[:5]
+    
+    # Hasil
+    top_results = get_top_similarities(title, dominant_topic)
     # End sistem Rekomendasi ===
 
     # Pagination
