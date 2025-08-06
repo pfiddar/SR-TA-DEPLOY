@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for 
+from flask import Flask, request, render_template, redirect, url_for, make_response, session, g
 import pandas as pd 
 import nltk 
 import string
@@ -16,9 +16,12 @@ from gensim.models import FastText
 import numpy as np
 import json
 import MySQLdb.cursors
+import uuid
+import secrets
 
 app = Flask(__name__, template_folder='templates')
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
+app.secret_key = secrets.token_hex(32) # Security enkrip session
 
 # Configure MySQL
 app.config['MYSQL_HOST'] = 'localhost'
@@ -69,6 +72,26 @@ def preprocess_to_tokens(text):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.before_request
+def identify_user():
+    # Deteksi cookie consent
+    consent = request.cookies.get('cookie_consent')
+    if consent == 'true':
+        session['consent_given'] = True # Sesi disimpan
+
+        # Request user token untuk yang menyetujui cookie
+        user_token = request.cookies.get('user_token')
+        if not user_token:
+            user_token = str(uuid.uuid4())
+            g.set_user_cookie = user_token
+        else:
+            g.user_token = user_token
+
+        # Buat sesi id baru tiap kunjungan
+        g.session_id = str(uuid.uuid4())
+    else:
+        session['consent_given'] = False   
 
 @app.route('/search')
 def search_ta():
@@ -161,6 +184,28 @@ def hasil_search_ta():
     similar_titles = calculate_similarity(df, preprocessed_title)
 
     # === Sistem Rekomendasi 
+    response = make_response()
+    
+    # Cek atau buat id sesi
+    if session.get('consent_given'):
+        # Set cookie jika belum ada
+        if hasattr(g, 'set_user_cookie'):
+            response.set_cookie('user_token', g.set_user_cookie, max_age=60*60*24*7)
+        
+        # Simpan sesi dan log
+        user_token = g.user_token if hasattr(g, 'user_token') else g.set_user_cookie
+        session_id = g.session_id
+        
+        # Ambil user_id dari tabel users
+        with mysql.connection.cursor() as cursor:
+            cursor.execute("SELECT id FROM users WHERE user_token = %s", (user_token,))
+            user = cursor.fetchone()
+            if user:
+                user_id = user[0]
+                # Simpan sesi ke DB
+                cursor.execute("INSERT INTO user_sessions (session_id, user_id) VALUES (%s, %s)", (session_id, user_id))
+            mysql.connection.commit()
+
     # Identifikasi topik dokumen dari query
     @cache.memoize(timeout=300)
     def get_topic(text):
@@ -211,6 +256,22 @@ def hasil_search_ta():
     
     # Hasil
     top_results = get_top_similarities(title, dominant_topic)
+
+    # Simpan log rekomendasi jika pakai cookie
+    if session.get('consent_given'):
+        with mysql.connection.cursor() as cursor:
+            for result in top_results:
+                # Ambil id dokumen 
+                cursor.execute("SELECT id FROM documents WHERE judul = %s", (result['judul'],))
+                doc = cursor.fetchone()
+                if doc:
+                    id_doc = doc[0]
+                    # Simpan log rekomendasi
+                    cursor.execute("""INSERT INTO log_recommendations (session_id, user_uery, id_doc, similarity) VALUES (%s, %s, %s, %s)""",
+                        (session_id, title, id_doc, result['similarity']))
+            mysql.connection.commit()
+    # Return response dengan hasil 
+    response = make_response(render_template("output.html", result=top_results))
     # End sistem Rekomendasi ===
 
     # Pagination
@@ -234,13 +295,18 @@ def hasil_search_ta():
 
     jumlah_baris = len(similar_titles)
 
-    return render_template('output.html', 
+    response = make_response(render_template('output.html', 
                            result_searching=data, 
                            jumlah_baris=jumlah_baris, 
                            page=page, 
                            total_pages=total_pages,
                            title=title,
-                           hasil=top_results)
+                           result=top_results))
+
+    # Set cookie
+    if session.get('consent_given') and hasattr(g, 'set_user_cookie'):
+        response.set_cookie('user_token', g.set_user_cookie, max_age=60*60*24*7)
+    return response
 
 @app.route('/detail/<int:index>', methods=['GET'])
 def detail_ta(index):
