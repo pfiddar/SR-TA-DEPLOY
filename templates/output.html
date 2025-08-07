@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Search Results</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='assets/css/style.css') }}"
-    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}"/>
+    <style>
+      ul li::marker{
+        color: #b45309;
+      }
+    </style>
   </head>
   <body class="font-sans flex flex-col min-h-screen">
     <div class="flex-grow">
@@ -197,142 +199,155 @@
           </div>
         </div>
       </div>
-      <div class="px-36 py-2">
-        <h2 class="font-semibold text-lg text-[#EAAD1E] tracking-wide">
-          Hasil Pencarian :
-          <span class="text-black">
-            Ditemukan
-            <strong class="text-[#EAAD1E]">{{ jumlah_baris }}</strong> dokumen
-            yang sesuai dengan query
-          </span>
-        </h2>
-        <form
-          action="{{ url_for('relevance_feedback') }}"
-          method="post"
-          class="mt-4"
-        >
-          <div class="flex flex-col">
-            {% for result in result_searching %}
-            <div
-              class="result border-b-2 border-[#EAAD1E] rounded-sm py-8 flex flex-col max-w-full"
-            >
-              <div class="flex">
-                <img
-                  src="{{ url_for('static', filename='assets/images/image.png') }}"
-                  alt="Gambar"
-                  class="w-28"
-                />
-                <div class="ml-2">
-                  <a
-                    href="{{ url_for('detail_ta', index=result.index) }}"
-                    class="hover:cursor-pointer underline hover:text-black hover:no-underline text-lg font-extrabold text-[#004B8F]"
-                  >
-                    <h1>{{ result.judul }}</h1>
-                  </a>
-                  <p class="line-clamp-4">{{ result.deskripsi }}</p>
-                </div>
-              </div>
-              <div class="flex justify-between mt-4">
-                <div class="flex items-center font-semibold">
-                  <p class="text-[#EAAD1E] mr-2">Kata Kunci:</p>
-                  <span class="text-black">{{ result.kata_kunci }}</span>
-                </div>
-                <div class="flex items-center font-semibold">
-                  <p class="text-[#EAAD1E] mr-2">Tahun:</p>
-                  <span class="text-black">{{ result.tahun }}</span>
-                </div>
-              </div>
-              <div class="flex mt-4">
-                <label class="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    name="relevant_docs"
-                    value="{{ result.index }}"
-                    class="form-checkbox text-[#004b8f]"
+      <!-- Results -->
+      <div class="px-20 py-2 grid grid-cols-12">
+        <!-- Pencarian -->
+        <div class="col-span-8 py-5 me-5">
+          <h2 class="font-semibold text-lg text-[#EAAD1E] tracking-wide">
+            Hasil Pencarian :
+            <span class="text-black">
+              Ditemukan
+              <strong class="text-[#EAAD1E]">{{ jumlah_baris }}</strong> dokumen
+              yang sesuai dengan query
+            </span>
+          </h2>
+          <form
+            action="{{ url_for('relevance_feedback') }}"
+            method="post"
+            class="mt-4"
+          >
+            <div class="flex flex-col">
+              {% for result in result_searching %}
+              <div
+                class="result border-b-2 border-[#EAAD1E] rounded-sm py-8 flex flex-col max-w-full"
+              >
+                <div class="flex">
+                  <img
+                    src="{{ url_for('static', filename='assets/images/image.png') }}"
+                    alt="Gambar"
+                    class="w-28"
                   />
-                  <span class="text-[#004b8f] font-semibold">Relevan</span>
-                </label>
-                <label class="flex items-center gap-1 ml-5">
-                  <input
-                    type="checkbox"
-                    name="irrelevant_docs"
-                    value="{{ result.index }}"
-                    class="form-checkbox text-red-600"
-                  />
-                  <span class="text-red-600 font-semibold">Tidak Relevan</span>
-                </label>
+                  <div class="ml-2">
+                    <a
+                      href="{{ url_for('detail_ta', index=result.index) }}"
+                      class="hover:cursor-pointer hover:text-amber-500 hover:no-underline text-lg font-extrabold text-slate-900 capitalize no-underline"
+                    >
+                      <h1>{{ result.judul }}</h1>
+                    </a>
+                    <p class="line-clamp-4">{{ result.deskripsi }}</p>
+                  </div>
+                </div>
+                <div class="flex justify-between mt-4">
+                  <div class="flex items-center font-semibold">
+                    <p class="text-[#EAAD1E] mr-2">Kata Kunci:</p>
+                    <span class="text-black">{{ result.kata_kunci }}</span>
+                  </div>
+                  <div class="flex items-center font-semibold">
+                    <p class="text-[#EAAD1E] mr-2">Tahun:</p>
+                    <span class="text-black">{{ result.tahun }}</span>
+                  </div>
+                </div>
+                <div class="flex mt-4">
+                  <label class="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      name="relevant_docs"
+                      value="{{ result.index }}"
+                      class="form-checkbox text-[#004b8f]"
+                    />
+                    <span class="text-[#004b8f] font-semibold">Relevan</span>
+                  </label>
+                  <label class="flex items-center gap-1 ml-5">
+                    <input
+                      type="checkbox"
+                      name="irrelevant_docs"
+                      value="{{ result.index }}"
+                      class="form-checkbox text-red-600"
+                    />
+                    <span class="text-red-600 font-semibold">Tidak Relevan</span>
+                  </label>
+                </div>
               </div>
+              {% endfor %}
             </div>
-            {% endfor %}
+  
+            <input type="hidden" name="query" value="{{ title }}" />
+            <div class="mt-6">
+              <button
+                type="submit"
+                id="submitFeedback"
+                class="p-2.5 w-36 h-12 text-sm font-medium text-white bg-[#004B8F] rounded-full hover:bg-[#002f4b] transition"
+                style="display: none"
+              >
+                Kirim Umpan Balik
+              </button>
+            </div>
+          </form>
+          <!-- Pagination -->
+          <div class="flex justify-center mt-4 mb-5">
+            <nav>
+              <ul class="inline-flex -space-x-px text-base h-10">
+                {% if page > 1 %}
+                <li>
+                  <a
+                    href="{{ url_for('hasil_search_ta', judul=title, page=page-1) }}"
+                    class="flex font-semibold items-center justify-center px-4 h-10 ms-0 leading-tight text-gray-800 bg-white border border-e-0 border-[#EAAD1E] rounded-s-lg transition-all duration-500 hover:bg-[#EAAD1E] hover:text-gray-700"
+                    >Previous</a
+                  >
+                </li>
+                {% endif %} {% for i in range(1, total_pages + 1) %}
+                <li>
+                  <a
+                    href="{{ url_for('hasil_search_ta', judul=title, page=i) }}"
+                    class="flex font-semibold items-center justify-center px-4 h-10 leading-tight {% if i == page %} text-[#004B8F] border border-[#EAAD1E] bg-blue-50 hover:bg-[#EAAD1E] hover:text-[#004B8F] {% else %}text-gray-800 bg-white border border-[#EAAD1E] transition-all duration-500 hover:bg-[#EAAD1E] hover:text-gray-700{% endif %}"
+                  >
+                    {{ i }}
+                  </a>
+                </li>
+                {% endfor %} {% if page < total_pages %}
+                <li>
+                  <a
+                    href="{{ url_for('hasil_search_ta', judul=title, page=page+1) }}"
+                    class="flex font-semibold items-center justify-center px-4 h-10 leading-tight text-gray-800 bg-white border border-[#EAAD1E] rounded-e-lg transition-all duration-500 hover:bg-[#EAAD1E] hover:text-gray-700"
+                    >Next</a
+                  >
+                </li>
+                {% endif %}
+              </ul>
+            </nav>
           </div>
-
+          <!-- End Pagination -->
+        </div>
+        <!-- End Pencarian -->
+        <div class="ms-10 py-5 px-5 col-span-4 bg-yellow-200 rounded-3xl">
           <!-- Sistem Rekomendasi -->
-
-          <h1>Hasil Rekomendasi</h1>
-
-          {% if hasil %}
-            {% for item in hasil %}
-              <div>
-                <strong>{{ item.judul }}</strong><br>
-                <span>Similarity Score: {{ item.similarity | round(3) }}</span>
-              </div>
+          <h5 class="text-lg font-semibold mb-2 text-yellow-700">Pilihan Terbaik Untuk Anda</h5>
+          {% if result %}
+            {% for item in result %}
+              <ul class="my-2 list-disc ps-5">
+                <li>
+                  <a href="#" class="capitalize hover:text-amber-500 font-medium text-yellow-700">{{ item.judul }}</a>
+                  <!-- <p class="text-yellow-700">Similarity Score: {{ item.similarity | round(3) }}</p> -->
+                </li>
+              </ul>
             {% endfor %}
           {% else %}
               <p>Tidak ada rekomendasi yang ditemukan.</p>
           {% endif %}
-
           <!-- End sistem rekomendasi -->
-          <input type="hidden" name="query" value="{{ title }}" />
-          <div class="mt-6">
-            <button
-              type="submit"
-              id="submitFeedback"
-              class="p-2.5 w-36 h-12 text-sm font-medium text-white bg-[#004B8F] rounded-full hover:bg-[#002f4b] transition"
-              style="display: none"
-            >
-              Kirim Umpan Balik
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
-      <div class="flex justify-center mt-4 mb-5">
-        <nav>
-          <ul class="inline-flex -space-x-px text-base h-10">
-            {% if page > 1 %}
-            <li>
-              <a
-                href="{{ url_for('hasil_search_ta', judul=title, page=page-1) }}"
-                class="flex font-semibold items-center justify-center px-4 h-10 ms-0 leading-tight text-gray-800 bg-white border border-e-0 border-[#EAAD1E] rounded-s-lg transition-all duration-500 hover:bg-[#EAAD1E] hover:text-gray-700"
-                >Previous</a
-              >
-            </li>
-            {% endif %} {% for i in range(1, total_pages + 1) %}
-            <li>
-              <a
-                href="{{ url_for('hasil_search_ta', judul=title, page=i) }}"
-                class="flex font-semibold items-center justify-center px-4 h-10 leading-tight {% if i == page %} text-[#004B8F] border border-[#EAAD1E] bg-blue-50 hover:bg-[#EAAD1E] hover:text-[#004B8F] {% else %}text-gray-800 bg-white border border-[#EAAD1E] transition-all duration-500 hover:bg-[#EAAD1E] hover:text-gray-700{% endif %}"
-              >
-                {{ i }}
-              </a>
-            </li>
-            {% endfor %} {% if page < total_pages %}
-            <li>
-              <a
-                href="{{ url_for('hasil_search_ta', judul=title, page=page+1) }}"
-                class="flex font-semibold items-center justify-center px-4 h-10 leading-tight text-gray-800 bg-white border border-[#EAAD1E] rounded-e-lg transition-all duration-500 hover:bg-[#EAAD1E] hover:text-gray-700"
-                >Next</a
-              >
-            </li>
-            {% endif %}
-          </ul>
-        </nav>
-      </div>
+      <!-- End Results -->
+
+      <!-- Footer -->
+      
     </div>
-    <footer class="flex items-center bg-gray-600 h-14 px-4 mt-auto w-full">
+    <footer class="flex items-center bg-gray-600 h-14 px-4 mt-5 w-full">
       <p class="text-left ml-12 text-white">
         &copy; 2024, Universitas Muhammadiyah Jember Teknik Informatika Library
       </p>
     </footer>
+    <!-- End Footer -->
     <script src="{{ url_for('static', filename='assets/js/checklist.js') }}"></script>
   </body>
 </html>
