@@ -192,7 +192,7 @@ def hasil_search_ta():
         if hasattr(g, 'set_user_cookie'):
             response.set_cookie('user_token', g.set_user_cookie, max_age=60*60*24*7)
         
-        # Simpan sesi dan log
+        # Simpan sesi
         user_token = g.user_token if hasattr(g, 'user_token') else g.set_user_cookie
         session_id = g.session_id
         
@@ -202,8 +202,14 @@ def hasil_search_ta():
             user = cursor.fetchone()
             if user:
                 user_id = user[0]
-                # Simpan sesi ke DB
-                cursor.execute("INSERT INTO user_sessions (session_id, user_id) VALUES (%s, %s)", (session_id, user_id))
+            else:
+                # Insert user_token baru
+                cursor.execute("INSERT INTO users (user_token) VALUES (%s)", (user_token,))
+                mysql.connection.commit()
+                user_id = cursor.lastrowid
+
+            # Simpan sesi ke DB
+            cursor.execute("INSERT INTO user_sessions (session_id, user_id) VALUES (%s, %s)", (session_id, user_id))
             mysql.connection.commit()
 
     # Identifikasi topik dokumen dari query
@@ -227,18 +233,18 @@ def hasil_search_ta():
         return np.mean(vectors, axis=0)
     
     # Identifikasi topik query
-    dominant_topic = get_topic(title)
+    dominant_topic = get_topic(preprocessed_title)
     if dominant_topic == -1:
         return render_template("output.html")
 
     # Similarity antara query dengan dokumen terpilih
     @cache.memoize(timeout=300)
-    def get_top_similarities(query_title, dominant_topic):
-        query_vector = get_fasttext_vector(query_title)
+    def get_top_similarities(preprocessed_title, dominant_topic):
+        query_vector = get_fasttext_vector(preprocessed_title)
         
         with mysql.connection.cursor(MySQLdb.cursors.DictCursor) as cursor:
             # Ambil dokumen dengan topik sama
-            cursor.execute("SELECT d.judul, dv.vector FROM documents d JOIN vector_docs dv ON d.id = dv.id_doc WHERE d.topik_dominan = %s", (dominant_topic,))
+            cursor.execute("SELECT d.id, d.judul, dv.vector FROM documents d JOIN vector_docs dv ON d.id = dv.id_doc WHERE d.topik_dominan = %s", (dominant_topic,))
             rows = cursor.fetchall()
 
         similarities = []
@@ -246,37 +252,35 @@ def hasil_search_ta():
             try:
                 doc_vec = np.array(json.loads(row['vector']))
                 sim = cosine_similarity([query_vector], [doc_vec])[0][0]
-                similarities.append({'judul': row['judul'], 'similarity': sim})
+                similarities.append({
+                    'id': row['id'], 
+                    'judul': row['judul'], 
+                    'similarity': sim
+                    })
             except Exception as e:
                 print("Error parsing vektor untuk judul: ", row['judul'], e)
                 continue
 
         # Mengurutkan similarity tertinggi
-        return sorted(similarities, key=lambda x: -x['similarity'])[:5]
+        return sorted(similarities, key=lambda x: -x['similarity'])[:10]
     
     # Hasil
-    top_results = get_top_similarities(title, dominant_topic)
+    top_results = get_top_similarities(preprocessed_title, dominant_topic)
 
     # Simpan log rekomendasi jika pakai cookie
     if session.get('consent_given'):
         with mysql.connection.cursor() as cursor:
             for result in top_results:
-                # Ambil id dokumen 
-                cursor.execute("SELECT id FROM documents WHERE judul = %s", (result['judul'],))
-                doc = cursor.fetchone()
-                if doc:
-                    id_doc = doc[0]
-                    # Simpan log rekomendasi
-                    cursor.execute("""INSERT INTO log_recommendations (session_id, user_uery, id_doc, similarity) VALUES (%s, %s, %s, %s)""",
-                        (session_id, title, id_doc, result['similarity']))
+                # Simpan log rekomendasi
+                cursor.execute("""INSERT INTO log_recommendations (session_id, user_query, id_doc, similarity) 
+                               VALUES ((SELECT id FROM user_sessions WHERE session_id = %s), %s, %s, %s)""",
+                    (session_id, preprocessed_title, result['id'], result['similarity']))
             mysql.connection.commit()
-    # Return response dengan hasil 
-    response = make_response(render_template("output.html", result=top_results))
     # End sistem Rekomendasi ===
 
     # Pagination
     page = request.args.get('page', 1, type=int)
-    per_page = 8
+    per_page = 10
     total_pages = math.ceil(len(similar_titles) / per_page)
     start = (page - 1) * per_page
     end = start + per_page
@@ -302,7 +306,7 @@ def hasil_search_ta():
                            total_pages=total_pages,
                            title=title,
                            result=top_results))
-
+    
     # Set cookie
     if session.get('consent_given') and hasattr(g, 'set_user_cookie'):
         response.set_cookie('user_token', g.set_user_cookie, max_age=60*60*24*7)
