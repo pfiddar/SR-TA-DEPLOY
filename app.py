@@ -18,6 +18,7 @@ import json
 import MySQLdb.cursors
 import uuid
 import secrets
+import traceback
 
 app = Flask(__name__, template_folder='templates')
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
@@ -190,12 +191,13 @@ def hasil_search_ta():
     if session.get('consent_given'):
         # Set cookie jika belum ada
         if hasattr(g, 'set_user_cookie'):
-            response.set_cookie('user_token', g.set_user_cookie, max_age=60*60*24*7)
+            response.set_cookie('user_token', g.set_user_cookie, max_age=60*60*24*7) # 1 minggu
         
         # Simpan sesi
         user_token = g.user_token if hasattr(g, 'user_token') else g.set_user_cookie
+        session['session_id'] = g.session_id
         session_id = g.session_id
-        
+
         # Ambil user_id dari tabel users
         with mysql.connection.cursor() as cursor:
             cursor.execute("SELECT id FROM users WHERE user_token = %s", (user_token,))
@@ -237,6 +239,102 @@ def hasil_search_ta():
     if dominant_topic == -1:
         return render_template("output.html")
 
+    # Ambil preferensi pengguna --- (cookie) ---
+    @cache.memoize(timeout=300)
+    def get_preference_vec(user_token=None, window_day=30):
+        try:
+            with mysql.connection.cursor(MySQLdb.cursors.DictCursor) as cursor:
+                if user_token is not None:
+                    cursor.execute(
+                        """SELECT query, COALESCE(rf.freq, 0) + COALESCE(log.freq, 0) AS total_freq, COALESCE(rf.freq_fb. 0) AS feedback_freq
+                        FROM (
+                            SELECT query COUNT(*) AS freqFROM log_rekommendations WHERE user_id = %s GROUP BY query 
+                        ) log
+                        LEFT JOIN (
+                            SELECT rf.query, COUNT(*) AS freq, SUM(CASE WHEN rf.relevance > 0 THEN 1 ELSE 0 END) AS freq_fb
+                            FROM relevance_feedback rf 
+                            JOIN user_sessions us ON rf.session_id = us.session_id
+                            JOIN users u ON us.user_id = u.id 
+                            WHERE u.user_token = %s AND rf.created_at >= NOW() - INTERVAL %s DAY 
+                            GROUP BY rf.query    
+                        ) rf. ON log.query = rf.query""", (user_token, window_day)
+                    )
+                    rows = cursor.fetchall()
+                else: 
+                    return None
+            
+            # Hitung bobot & vektor rata-rata
+            bobot_vecs = []
+            for row in rows:
+                freq_query = float(row['freq'] or 0)
+                freq_fb = float(row['freq_fb'] or 0)
+                weight = freq_query + (0.5 * freq_fb)
+                if row['query'] in fasttext_model.wv:
+                    bobot_vecs.append(fasttext_model.wv[row['query']] * weight)
+            if not bobot_vecs:
+                return None
+            return np.mean(bobot_vecs, axis=0) # Rata-rata
+        except Exception as e:
+            print("Error: ", e)
+            traceback.print_exc()
+            raise 
+    
+    # Ambil topik dominan dari preferensi --- (cookie) ---
+    @cache.memoize(timeout=300)
+    def get_preference_topics(top_n=5):
+        topic_vectors = []
+        try:
+            for topic_id in range(lda_model.num_topics):
+                topic_words = [word for word, _ in lda_model.show_topic(topic_id, top_n)]
+                word_vecs = [fasttext_model.wv[word] for word in topic_words if word in fasttext_model.wv]
+                if word_vecs:
+                    topic_vectors.append(np.mean(word_vecs, axis=0))
+                else:
+                    topic_vectors.append(np.zeros(fasttext_model.vector_size))
+                    print("Topik vektor : ", topic_vectors)
+            return topic_vectors
+        except Exception as e:
+            print("Error: ", e)
+            traceback.print_exc()
+            raise    
+    
+    # Similarity antara preferensi dengan dokumen --- (cookie) ---
+    @cache.memoize(timeout=300)
+    def get_preference_similarities():
+            top_n_docs = int(request.args.get("top_n_docs", 5))
+
+            # Hitung vektor preferensi
+            pref_vec = get_preference_vec(user_token)
+            if pref_vec is None:
+                return []
+            topic_vecs = get_preference_topics() # Menghitung vektor tiap topik
+
+            # Mencari 3 topik paling mirip
+            sims = cosine_similarity([pref_vec], topic_vecs)[0]
+            top_topics = np.argsort(sims)[::-1][:3]
+
+            results = []
+            with mysql.connection.cursor(MySQLdb.cursors.DictCursor) as cursor:
+                try:
+                    for topic_id in top_topics:
+                        cursor.execute("""
+                            SELECT id, judul, deskripsi FROM documents WHERE topik_dominan = %s LIMIT %s
+                        """, (int(topic_id), top_n_docs))
+                        rows = cursor.fetchall()
+                        for row in rows:
+                            results.append({
+                                'id': row['id'],
+                                'topic_id': int(topic_id), 
+                                'judul': row['judul'], 
+                                'similarity': sims[topic_id]
+                        })
+                except Exception as e:
+                    print("Error: ", e)
+                    traceback.print_exc()
+                    raise
+            # Mengurutkan hasil
+            return sorted(results, key=lambda x: -x['similarity'])[:5]
+
     # Similarity antara query dengan dokumen terpilih
     @cache.memoize(timeout=300)
     def get_top_similarities(preprocessed_title, dominant_topic):
@@ -263,9 +361,18 @@ def hasil_search_ta():
 
         # Mengurutkan similarity tertinggi
         return sorted(similarities, key=lambda x: -x['similarity'])[:10]
-    
-    # Hasil
-    top_results = get_top_similarities(preprocessed_title, dominant_topic)
+        
+    # Hasil rekomendasi
+    top_results = []
+    if user_token:
+        try:
+            pref_results = get_preference_similarities()[:5]
+            general_results = get_top_similarities(preprocessed_title, dominant_topic)[:5]
+            top_results = pref_results + general_results
+        except Exception as e:
+            print("Error saat ambil rekomendasi dengan preferensi: ", e)
+    else:
+        top_results = get_top_similarities(preprocessed_title, dominant_topic)[:10]
 
     # Simpan log rekomendasi jika pakai cookie
     if session.get('consent_given'):
@@ -334,6 +441,9 @@ def relevance_feedback():
     relevant_docs = request.form.getlist('relevant_docs')
     irrelevant_docs = request.form.getlist('irrelevant_docs')
     query = request.form['query']
+    session_id = session.get('session_id')
+
+    #session_id = session.get('session_id')
 
     if not relevant_docs and not irrelevant_docs:
         return redirect(url_for('hasil_search_ta', judul=query))
@@ -341,9 +451,9 @@ def relevance_feedback():
     try:
         with mysql.connection.cursor() as cursor:
             for doc_id in relevant_docs:
-                cursor.execute("INSERT INTO relevance_feedback (query, document_id, relevance) VALUES (%s, %s, %s)", (query, doc_id, 1))
+                cursor.execute("INSERT INTO relevance_feedback (query, document_id, relevance, session_id) VALUES (%s, %s, %s, %s)", (query, doc_id, 1, session_id))
             for doc_id in irrelevant_docs:
-                cursor.execute("INSERT INTO relevance_feedback (query, document_id, relevance) VALUES (%s, %s, %s)", (query, doc_id, 0))
+                cursor.execute("INSERT INTO relevance_feedback (query, document_id, relevance, session_id) VALUES (%s, %s, %s, %s)", (query, doc_id, 0, session_id))
             mysql.connection.commit()
     except Exception as e:
         mysql.connection.rollback()
