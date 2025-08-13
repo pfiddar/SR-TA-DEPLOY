@@ -246,18 +246,23 @@ def hasil_search_ta():
             with mysql.connection.cursor(MySQLdb.cursors.DictCursor) as cursor:
                 if user_token is not None:
                     cursor.execute(
-                        """SELECT query, COALESCE(rf.freq, 0) + COALESCE(log.freq, 0) AS total_freq, COALESCE(rf.freq_fb. 0) AS feedback_freq
+                        """SELECT user_query, COALESCE(rf.freq, 0) + COALESCE(log.freq, 0) AS total_freq, COALESCE(rf.freq_fb, 0) AS feedback_freq
                         FROM (
-                            SELECT query COUNT(*) AS freqFROM log_rekommendations WHERE user_id = %s GROUP BY query 
-                        ) log
+							SELECT lr.user_query, COUNT(*) AS freq 
+							FROM log_recommendations lr
+							JOIN user_sessions us ON lr.session_id = us.session_id
+							JOIN users u ON us.user_id = u.id 
+							WHERE u.user_token = %s GROUP BY lr.user_query
+						) log
                         LEFT JOIN (
                             SELECT rf.query, COUNT(*) AS freq, SUM(CASE WHEN rf.relevance > 0 THEN 1 ELSE 0 END) AS freq_fb
                             FROM relevance_feedback rf 
                             JOIN user_sessions us ON rf.session_id = us.session_id
-                            JOIN users u ON us.user_id = u.id 
-                            WHERE u.user_token = %s AND rf.created_at >= NOW() - INTERVAL %s DAY 
+							JOIN users u ON us.user_id = u.id 
+                            WHERE u.user_token = %s
+                            AND rf.created_at >= NOW() - INTERVAL %s DAY 
                             GROUP BY rf.query    
-                        ) rf. ON log.query = rf.query""", (user_token, window_day)
+                        ) rf ON log.user_query = rf.query""", (user_token, user_token, window_day)
                     )
                     rows = cursor.fetchall()
                 else: 
@@ -266,11 +271,11 @@ def hasil_search_ta():
             # Hitung bobot & vektor rata-rata
             bobot_vecs = []
             for row in rows:
-                freq_query = float(row['freq'] or 0)
-                freq_fb = float(row['freq_fb'] or 0)
+                freq_query = float(row['total_freq'] or 0)
+                freq_fb = float(row['feedback_freq'] or 0)
                 weight = freq_query + (0.5 * freq_fb)
-                if row['query'] in fasttext_model.wv:
-                    bobot_vecs.append(fasttext_model.wv[row['query']] * weight)
+                if row['user_query'] in fasttext_model.wv:
+                    bobot_vecs.append(fasttext_model.wv[row['user_query']] * weight)
             if not bobot_vecs:
                 return None
             return np.mean(bobot_vecs, axis=0) # Rata-rata
@@ -381,7 +386,7 @@ def hasil_search_ta():
                 # Simpan log rekomendasi
                 cursor.execute("""INSERT INTO log_recommendations (session_id, user_query, id_doc, similarity) 
                                VALUES ((SELECT id FROM user_sessions WHERE session_id = %s), %s, %s, %s)""",
-                    (session_id, preprocessed_title, result['id'], result['similarity']))
+                    (session_id, title, result['id'], result['similarity']))
             mysql.connection.commit()
     # End sistem Rekomendasi ===
 
