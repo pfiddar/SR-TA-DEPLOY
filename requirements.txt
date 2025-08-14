@@ -2,3 +2,9 @@ pandas==2.2.2
 nltk==3.8.1
 scikit-learn==1.4.2
 flask
+Sastrawi
+gensim
+flask-mysqldb
+flask-caching
+numpy
+mysqlclient
