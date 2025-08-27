@@ -370,12 +370,18 @@ def hasil_search_ta():
     # Hasil rekomendasi
     top_results = []
     if user_token:
-        try:
-            pref_results = get_preference_similarities()[:5]
-            general_results = get_top_similarities(preprocessed_title, dominant_topic)[:5]
-            top_results = pref_results + general_results
-        except Exception as e:
-            print("Error saat ambil rekomendasi dengan preferensi: ", e)
+        if session_id:
+            try:
+                pref_results = get_preference_similarities()[:5]
+                general_results = get_top_similarities(preprocessed_title, dominant_topic)[:5]
+                top_results = pref_results + general_results
+            except Exception as e:
+                print("Error saat ambil rekomendasi dengan preferensi: ", e)
+        else:
+            try:
+                top_results = get_top_similarities(preprocessed_title, dominant_topic)[:10]
+            except Exception as e:
+                print("Tidak bisa menampilkan rekomendasi dari topik: ", e)
     else:
         top_results = get_top_similarities(preprocessed_title, dominant_topic)[:10]
 
@@ -431,6 +437,7 @@ def detail_ta(index):
         return "Index out of range", 404
 
     detail_data = {
+        'index': index,
         'judul': df.loc[index, 'judul'],
         'penulis': df.loc[index, 'penulis'],
         'tahun': df.loc[index, 'tahun'],
@@ -446,9 +453,7 @@ def relevance_feedback():
     relevant_docs = request.form.getlist('relevant_docs')
     irrelevant_docs = request.form.getlist('irrelevant_docs')
     query = request.form['query']
-    session_id = session.get('session_id')
-
-    #session_id = session.get('session_id')
+    session_id = session.get('session_id') or request.form.get('session_id')
 
     if not relevant_docs and not irrelevant_docs:
         return redirect(url_for('hasil_search_ta', judul=query))
