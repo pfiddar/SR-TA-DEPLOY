@@ -155,14 +155,14 @@
   <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js"></script>
   <script>
     function acceptCookies() {
-      document.cookie = "cookie_consent=true; path=/; max-age=2592000"; // Masa simpan cookie 1 bulan
+      document.cookie = "cookie_consent=true; path=/; max-age=864000"; // Masa simpan cookie 10 hari
       document.getElementById('cookieBanner').style.display = 'none';
       location.reload(); // Reload agar server detech cookie consent
     }
 
     // Jika menolak cookie
     function rejectCookies() {
-        document.cookie = "cookie_consent=rejected; path=/; max-age=2592000"; 
+        document.cookie = "cookie_consent=rejected; path=/; max-age=864000"; 
         document.getElementById('cookieBanner').style.display = 'none';
       }
 
