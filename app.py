@@ -374,16 +374,15 @@ def hasil_search_ta():
             try:
                 pref_results = get_preference_similarities()[:5]
                 general_results = get_top_similarities(preprocessed_title, dominant_topic)[:5]
-                top_results = pref_results + general_results
             except Exception as e:
                 print("Error saat ambil rekomendasi dengan preferensi: ", e)
         else:
             try:
-                top_results = get_top_similarities(preprocessed_title, dominant_topic)[:10]
+                pref_results = get_preference_similarities()[:10]
             except Exception as e:
                 print("Tidak bisa menampilkan rekomendasi dari topik: ", e)
     else:
-        top_results = get_top_similarities(preprocessed_title, dominant_topic)[:10]
+        pref_results = get_preference_similarities()[:10]
 
     # Simpan log rekomendasi jika pakai cookie
     if session.get('consent_given'):
@@ -423,7 +422,8 @@ def hasil_search_ta():
                            page=page, 
                            total_pages=total_pages,
                            title=title,
-                           result=top_results))
+                           pref_results=pref_results,
+                           general_results=general_results))
     
     # Set cookie
     if session.get('consent_given') and hasattr(g, 'set_user_cookie'):
