@@ -106,7 +106,10 @@ def hasil_search_ta():
     
     title = request.args.get('judul')
     if not title:
-        return redirect(url_for('search_ta'))
+        return redirect(url_for('search_ta')) 
+    
+    # Simpan search query ke session
+    session['last_query'] = title
 
     # Check if the documents table is empty
     with mysql.connection.cursor() as cursor:
@@ -187,6 +190,10 @@ def hasil_search_ta():
     # === Sistem Rekomendasi 
     response = make_response()
     
+    # Fallback default
+    user_token = None
+    session_id = None 
+
     # Cek atau buat id sesi
     if session.get('consent_given'):
         # Set cookie jika belum ada
@@ -241,7 +248,7 @@ def hasil_search_ta():
 
     # Ambil preferensi pengguna --- (cookie) ---
     @cache.memoize(timeout=300)
-    def get_preference_vec(user_token=None, window_day=30):
+    def get_preference_vec(user_token=None, window_day=7):
         try:
             with mysql.connection.cursor(MySQLdb.cursors.DictCursor) as cursor:
                 if user_token is not None:
@@ -368,7 +375,8 @@ def hasil_search_ta():
         return sorted(similarities, key=lambda x: -x['similarity'])[:10]
         
     # Hasil rekomendasi
-    top_results = []
+    pref_results = []
+    general_results = []
     if user_token:
         if session_id:
             try:
@@ -378,17 +386,21 @@ def hasil_search_ta():
                 print("Error saat ambil rekomendasi dengan preferensi: ", e)
         else:
             try:
-                pref_results = get_preference_similarities()[:10]
+                general_results = get_top_similarities(preprocessed_title, dominant_topic)[:10]
             except Exception as e:
                 print("Tidak bisa menampilkan rekomendasi dari topik: ", e)
     else:
-        pref_results = get_preference_similarities()[:10]
+        general_results = get_top_similarities(preprocessed_title, dominant_topic)[:10]
 
     # Simpan log rekomendasi jika pakai cookie
     if session.get('consent_given'):
         with mysql.connection.cursor() as cursor:
-            for result in top_results:
-                # Simpan log rekomendasi
+            # Simpan log rekomendasi
+            for result in pref_results:
+                cursor.execute("""INSERT INTO log_recommendations (session_id, user_query, id_doc, similarity) 
+                               VALUES ((SELECT id FROM user_sessions WHERE session_id = %s), %s, %s, %s)""",
+                    (session_id, title, result['id'], result['similarity']))
+            for result in general_results:
                 cursor.execute("""INSERT INTO log_recommendations (session_id, user_query, id_doc, similarity) 
                                VALUES ((SELECT id FROM user_sessions WHERE session_id = %s), %s, %s, %s)""",
                     (session_id, title, result['id'], result['similarity']))
@@ -454,7 +466,9 @@ def relevance_feedback():
     irrelevant_docs = request.form.getlist('irrelevant_docs')
     query = request.form['query']
     session_id = session.get('session_id') or request.form.get('session_id')
-
+    if not session_id:
+        session_id = None
+        
     if not relevant_docs and not irrelevant_docs:
         return redirect(url_for('hasil_search_ta', judul=query))
 
