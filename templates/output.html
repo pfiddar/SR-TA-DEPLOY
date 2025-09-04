@@ -221,10 +221,10 @@
       <!-- End Pencarian -->
       <!-- Sistem Rekomendasi -->
       <div class="lg:col-span-4 bg-yellow-100 rounded-3xl p-5">
+        {% if pref_results %}
         <h5 class="text-lg font-bold mb-5 text-yellow-700">
           Berdasarkan Preferensi Anda
         </h5>
-        {% if pref_results %} 
           {% for result in pref_results %}
           <ul class="my-2">
             <li>
@@ -234,15 +234,13 @@
             </li>
           </ul>
           <div class="my-2 border-b border-amber-400"></div>
-          {% endfor %}  
-        {% else %}
-        <p>Belum ada rekomendasi preferensi.</p>
+          {% endfor %}
         {% endif %}
 
         <h5 class="text-lg font-bold mb-5 mt-7 text-yellow-700">
           Berdasarkan Pencarian Anda
         </h5>
-        {% if general_results %} 
+        {% if general_results %}
           {% for result in general_results %}
           <ul class="my-2">
             <li>
@@ -252,7 +250,7 @@
             </li>
           </ul>
           <div class="my-2 border-b border-amber-400"></div>
-          {% endfor %}  
+          {% endfor %}
         {% else %}
         <p>Belum ada rekomendasi untuk Anda.</p>
         {% endif %}
@@ -303,36 +301,36 @@
   <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js"></script>
   <script>
     function acceptCookies() {
-      document.cookie = "cookie_consent=true; path=/; max-age=864000"; // Masa simpan cookie 10 hari
+      document.cookie = "cookie_consent=true; path=/; max-age=604800"; // Masa simpan cookie 10 hari
       document.getElementById("cookieBanner").style.display = "none";
       location.reload(); // Reload agar server detech cookie consent
     }
 
     // Jika menolak cookie
     function rejectCookies() {
-      document.cookie = "cookie_consent=rejected; path=/; max-age=864000";
-      document.getElementById("cookieBanner").style.display = "none";
+      document.cookie = "cookie_consent=rejected; path=/;";
+      document.getElementById('cookieBanner').style.display = 'none';
     }
 
-    // Menampilkan banner jika cookie belum ada
-    if (!document.cookie.includes("cookie_consent=true")) {
-      document.getElementById("cookieBanner").style.display = "block";
+    // Ambil cookie 
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(";").shift();
     }
 
-    // Sembunyikan banner jika sudah menerima cookie
     document.addEventListener("DOMContentLoaded", function () {
-      if (
-        document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("cookie_consent=true"))
-      ) {
+      const consent = getCookie("cookie_consent");
+      // Sembunyikan banner jika sudah setuju
+      if (consent === "true") {
         document.getElementById("cookieBanner").style.display = "none";
+        // Tampilkan banner jika menolak/tidak ada cookie
+      } else {
+        document.getElementById("cookieBanner").style.display = "block";
       }
     });
 
-    document
-      .getElementById("menuToggle")
-      .addEventListener("click", function () {
+    document.getElementById("menuToggle").addEventListener("click", function () {
         document.getElementById("mobileMenu").classList.toggle("hidden");
       });
   </script>
