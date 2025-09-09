@@ -29,10 +29,14 @@ conn = get_connection()
 
 # Buat wrapper hanya untuk file pickle
 old_np_load = np.load
-def np_load_fixed(*a, **k):
+def np_load_fixed(file, *a, **k):
+    # Kalau file .npy biasa → jangan pakai allow_pickle
+    if str(file).endswith(".npy"):
+        return old_np_load(file, *a, **k)
+    # Kalau bukan .npy (misalnya .model) → pakai allow_pickle
     if "allow_pickle" not in k:
         k["allow_pickle"] = True
-    return old_np_load(*a, **k)
+    return old_np_load(file, *a, **k)
 
 np.load = np_load_fixed  # patch sementara
 
