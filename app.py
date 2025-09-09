@@ -6,6 +6,20 @@ from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from nltk.corpus import stopwords 
 from sklearn.feature_extraction.text import TfidfVectorizer 
 from sklearn.metrics.pairwise import cosine_similarity 
+
+# Buat wrapper hanya untuk file pickle
+old_np_load = np.load
+def np_load_fixed(file, *a, **k):
+    # Kalau file .npy biasa → jangan pakai allow_pickle
+    if str(file).endswith(".npy"):
+        return old_np_load(file, *a, **k)
+    # Kalau bukan .npy (misalnya .model) → pakai allow_pickle
+    if "allow_pickle" not in k:
+        k["allow_pickle"] = True
+    return old_np_load(file, *a, **k)
+
+np.load = np_load_fixed  # patch sementara
+
 from flask_caching import Cache
 from gensim.models import LdaModel
 from gensim.corpora import Dictionary
@@ -26,19 +40,6 @@ def get_connection():
         cursorclass=pymysql.cursors.DictCursor
     )
 conn = get_connection()
-
-# Buat wrapper hanya untuk file pickle
-old_np_load = np.load
-def np_load_fixed(file, *a, **k):
-    # Kalau file .npy biasa → jangan pakai allow_pickle
-    if str(file).endswith(".npy"):
-        return old_np_load(file, *a, **k)
-    # Kalau bukan .npy (misalnya .model) → pakai allow_pickle
-    if "allow_pickle" not in k:
-        k["allow_pickle"] = True
-    return old_np_load(file, *a, **k)
-
-np.load = np_load_fixed  # patch sementara
 
 # Load LDA final model, fasttext model, vektor dokumen, dan dictionary
 lda_model = LdaModel.load("model/lda/model_lda_terbaik.model")
