@@ -313,7 +313,7 @@ def hasil_search_ta():
                 freq_query = float(row['total_freq'] or 0)
                 freq_fb = float(row['feedback_freq'] or 0)
                 weight = freq_query + (0.5 * freq_fb)
-                bobot_vecs.append(fasttext_model.get_word_vector[row['user_query']] * weight)
+                bobot_vecs.append(fasttext_model.get_word_vector(row['user_query']) * weight)
             if not bobot_vecs:
                 return None
             return np.mean(bobot_vecs, axis=0) # Rata-rata
