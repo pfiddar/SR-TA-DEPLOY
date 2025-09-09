@@ -6,24 +6,9 @@ from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from nltk.corpus import stopwords 
 from sklearn.feature_extraction.text import TfidfVectorizer 
 from sklearn.metrics.pairwise import cosine_similarity 
-
-# Buat wrapper hanya untuk file pickle
-old_np_load = np.load
-def np_load_fixed(file, *a, **k):
-    # Kalau file .npy biasa → jangan pakai allow_pickle
-    if str(file).endswith(".npy"):
-        return old_np_load(file, *a, **k)
-    # Kalau bukan .npy (misalnya .model) → pakai allow_pickle
-    if "allow_pickle" not in k:
-        k["allow_pickle"] = True
-    return old_np_load(file, *a, **k)
-
-np.load = np_load_fixed  # patch sementara
-
 from flask_caching import Cache
-from gensim.models import LdaModel
+from gensim.models import LdaModel, FastText
 from gensim.corpora import Dictionary
-from gensim.models import FastText
 
 app = Flask(__name__, template_folder='templates')
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
@@ -41,10 +26,23 @@ def get_connection():
     )
 conn = get_connection()
 
+# Buat wrapper hanya untuk file pickle
+old_np_load = np.load
+def np_load_fixed(file, *a, **k):
+    # Kalau file .npy biasa → jangan pakai allow_pickle
+    if str(file).endswith(".npy"):
+        return old_np_load(file, *a, **k)
+    # Kalau bukan .npy (misalnya .model) → pakai allow_pickle
+    if "allow_pickle" not in k:
+        k["allow_pickle"] = True
+    return old_np_load(file, *a, **k)
+
+np.load = np_load_fixed  # patch sementara
+
 # Load LDA final model, fasttext model, vektor dokumen, dan dictionary
 lda_model = LdaModel.load("model/lda/model_lda_terbaik.model")
 dictionary = Dictionary.load("model/lda/dictionary.dict")
-fasttext_model = FastText.load("model/fasttext/fasttext_model.model")
+fasttext_model = FastText.load("model/fasttext/fasttext_model.bin")
 df_doc_vectors = pd.read_csv("model/fasttext/dokumen_vektor.csv")
 
 # Kembalikan np.load seperti semula
@@ -269,9 +267,9 @@ def hasil_search_ta():
     @cache.memoize(timeout=300)
     def get_fasttext_vector(text):
         tokens = preprocess_to_tokens(text)
-        vectors = [fasttext_model.wv[word] for word in tokens if word in fasttext_model.wv]
+        vectors = [fasttext_model.get_word_vector[word] for word in tokens]
         if not vectors:
-            return np.zeros(fasttext_model.vector_size)
+            return np.zeros(fasttext_model.get_dimension())
         return np.mean(vectors, axis=0)
     
     # Identifikasi topik query
@@ -315,8 +313,7 @@ def hasil_search_ta():
                 freq_query = float(row['total_freq'] or 0)
                 freq_fb = float(row['feedback_freq'] or 0)
                 weight = freq_query + (0.5 * freq_fb)
-                if row['user_query'] in fasttext_model.wv:
-                    bobot_vecs.append(fasttext_model.wv[row['user_query']] * weight)
+                bobot_vecs.append(fasttext_model.get_word_vector[row['user_query']] * weight)
             if not bobot_vecs:
                 return None
             return np.mean(bobot_vecs, axis=0) # Rata-rata
@@ -332,11 +329,11 @@ def hasil_search_ta():
         try:
             for topic_id in range(lda_model.num_topics):
                 topic_words = [word for word, _ in lda_model.show_topic(topic_id, top_n)]
-                word_vecs = [fasttext_model.wv[word] for word in topic_words if word in fasttext_model.wv]
+                word_vecs = [fasttext_model.get_word_vector(word) for word in topic_words]
                 if word_vecs:
                     topic_vectors.append(np.mean(word_vecs, axis=0))
                 else:
-                    topic_vectors.append(np.zeros(fasttext_model.vector_size))
+                    topic_vectors.append(np.zeros(fasttext_model.get_dimension()))
                     print("Topik vektor : ", topic_vectors)
             return topic_vectors
         except Exception as e:
