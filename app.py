@@ -279,7 +279,7 @@ def hasil_search_ta():
     def get_preference_vec(user_token=None, window_day=7):
         conn = ensure_connection()
         try:
-            with conn.cursor(MySQLdb.cursors.DictCursor) as cursor:
+            with conn.cursor() as cursor:
                 if user_token is not None:
                     cursor.execute(
                         """SELECT user_query, COALESCE(rf.freq, 0) + COALESCE(log.freq, 0) AS total_freq, COALESCE(rf.freq_fb, 0) AS feedback_freq
@@ -356,7 +356,7 @@ def hasil_search_ta():
 
             results = []
             conn = ensure_connection()
-            with conn.cursor(MySQLdb.cursors.DictCursor) as cursor:
+            with conn.cursor() as cursor:
                 try:
                     for topic_id in top_topics:
                         cursor.execute("""
@@ -383,7 +383,7 @@ def hasil_search_ta():
         query_vector = get_fasttext_vector(preprocessed_title)
         
         conn = ensure_connection()
-        with conn.cursor(MySQLdb.cursors.DictCursor) as cursor:
+        with conn.cursor() as cursor:
             # Ambil dokumen dengan topik sama
             cursor.execute("SELECT d.id, d.judul, dv.vector FROM documents d JOIN vector_docs dv ON d.id = dv.id_doc WHERE d.topik_dominan = %s", (dominant_topic,))
             rows = cursor.fetchall()
