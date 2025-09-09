@@ -27,11 +27,18 @@ def get_connection():
     )
 conn = get_connection()
 
+# Patch sementara numpy agar bisa load pickle
+old_np_load = np.load
+np.load = lambda *a, **k: old_np_load(*a, allow_pickle=True, **k)
+
 # Load LDA final model, fasttext model, vektor dokumen, dan dictionary
 lda_model = LdaModel.load("model/lda/model_lda_terbaik.model")
 dictionary = Dictionary.load("model/lda/dictionary.dict")
 fasttext_model = FastText.load("model/fasttext/fasttext_model.model")
 df_doc_vectors = pd.read_csv("model/fasttext/dokumen_vektor.csv")
+
+# Kembalikan np.load seperti semula
+np.load = old_np_load
 
 # Load dataset
 df = pd.read_csv('dataset_ta.csv')
