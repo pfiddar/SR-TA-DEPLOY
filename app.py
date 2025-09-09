@@ -1,36 +1,31 @@
 from flask import Flask, request, render_template, redirect, url_for, make_response, session, g
-import pandas as pd 
-import nltk 
-import string
-import math
+import pandas as pd, nltk, string, math, pymysql
+import numpy as np, json, uuid, secrets, traceback, os
 from nltk.tokenize import word_tokenize 
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory 
 from nltk.corpus import stopwords 
 from sklearn.feature_extraction.text import TfidfVectorizer 
 from sklearn.metrics.pairwise import cosine_similarity 
-from flask_mysqldb import MySQL 
 from flask_caching import Cache
 from gensim.models import LdaModel
 from gensim.corpora import Dictionary
 from gensim.models import FastText
-import numpy as np
-import json
-import MySQLdb.cursors
-import uuid
-import secrets
-import traceback
 
 app = Flask(__name__, template_folder='templates')
 cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 app.secret_key = secrets.token_hex(32) # Security enkrip session
 
 # Configure MySQL
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = ''
-app.config['MYSQL_DB'] = 'stki'
-
-mysql = MySQL(app)
+def get_connection():
+    return pymysql.connect(
+        host=os.getenv("MYSQLHOST"),
+        port=int(os.getenv("MYSQLPORT", 10724)),
+        user=os.getenv("MYSQLUSER"),
+        password=os.getenv("MYSQLPASSWORD"),
+        database=os.getenv("MYSQLDATABASE"),
+        cursorclass=pymysql.cursors.DictCursor
+    )
+conn = get_connection()
 
 # Load LDA final model, fasttext model, vektor dokumen, dan dictionary
 lda_model = LdaModel.load("model/lda/model_lda_terbaik.model")
@@ -54,6 +49,23 @@ factory = StemmerFactory()
 stemmer = factory.create_stemmer()
 stop_words = set(stopwords.words('indonesian'))
 
+def safe_stem(word, stemmer):
+    try:
+        return stemmer.stem(word)
+    except SystemExit:
+        return word
+    except Exception as e:
+        print(f"Stemming error: {e}")
+        return word
+
+def ensure_connection():
+    global conn
+    try:
+        conn.ping(reconnect=True)  
+    except:
+        conn = get_db_connection()  # Buat koneksi baru jika terputus
+    return conn
+
 # Initialize custom stopwords and combine all stopwords
 custom_stopwords = set(open('custom_stoplist.txt').read().split())
 combined_stopwords = stop_words.union(custom_stopwords)
@@ -63,7 +75,7 @@ def preprocess_text(text):
     text = text.lower()
     text = text.translate(str.maketrans('', '', string.punctuation))
     tokens = word_tokenize(text)
-    tokens = [stemmer.stem(word) for word in tokens if word.isalpha() and word not in combined_stopwords]
+    tokens = [safe_stem(word, stemmer) for word in tokens if word.isalpha() and word not in combined_stopwords]
     return ' '.join(tokens)
 
 @cache.memoize(timeout=300)
@@ -112,7 +124,8 @@ def hasil_search_ta():
     session['last_query'] = title
 
     # Check if the documents table is empty
-    with mysql.connection.cursor() as cursor:
+    conn = ensure_connection()
+    with conn.cursor() as cursor:
         cursor.execute("SELECT COUNT(*) FROM documents")
         doc_count = cursor.fetchone()[0]
 
@@ -122,9 +135,9 @@ def hasil_search_ta():
                 for index, row in df.iterrows():
                     cursor.execute("INSERT INTO documents (judul, penulis, tahun, deskripsi, tautan, kata_kunci) VALUES (%s, %s, %s, %s, %s, %s)",
                                    (row['judul'], row['penulis'], row['tahun'], row['deskripsi'], row['tautan'], row['kata_kunci']))
-                mysql.connection.commit()
+                conn.connection.commit()
             except Exception as e:
-                mysql.connection.rollback()
+                conn.connection.rollback()
                 print(f"Error inserting documents: {e}")
 
     # Preprocess the search title
@@ -136,8 +149,9 @@ def hasil_search_ta():
         vectorizer = TfidfVectorizer(max_features=1000)
         tfidf = vectorizer.fit_transform(df['deskripsi'].apply(preprocess_text))
 
+        conn = ensure_connection()
         try:
-            with mysql.connection.cursor() as cursor:
+            with conn.cursor() as cursor:
                 cursor.execute("DELETE FROM word_document")
                 cursor.execute("DELETE FROM words")
                 
@@ -149,9 +163,9 @@ def hasil_search_ta():
                         if score > 0:
                             cursor.execute("INSERT INTO word_document (word_id, document_id, tfidf_score) VALUES (%s, %s, %s)",
                                            (word_id, doc_idx + 1, score[0]))
-                mysql.connection.commit()
+                conn.commit()
         except Exception as e:
-            mysql.connection.rollback()
+            conn.rollback()
             print(f"Error indexing words: {e}")
 
         title_vector = vectorizer.transform([preprocessed_title])
@@ -160,8 +174,9 @@ def hasil_search_ta():
         scores = cosine_similarity(title_vector, tfidf)[0]
 
         # Tambahkan bobot ekstra berdasarkan umpan balik relevansi
+        conn = ensure_connection()
         try:
-            with mysql.connection.cursor() as cursor:
+            with conn.cursor() as cursor:
                 cursor.execute("SELECT document_id FROM relevance_feedback WHERE query = %s", (preprocessed_title,))
                 relevant_docs = cursor.fetchall()
                 relevant_docs = [doc[0] for doc in relevant_docs]
@@ -206,7 +221,8 @@ def hasil_search_ta():
         session_id = g.session_id
 
         # Ambil user_id dari tabel users
-        with mysql.connection.cursor() as cursor:
+        conn = ensure_connection()
+        with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM users WHERE user_token = %s", (user_token,))
             user = cursor.fetchone()
             if user:
@@ -214,12 +230,12 @@ def hasil_search_ta():
             else:
                 # Insert user_token baru
                 cursor.execute("INSERT INTO users (user_token) VALUES (%s)", (user_token,))
-                mysql.connection.commit()
+                conn.commit()
                 user_id = cursor.lastrowid
 
             # Simpan sesi ke DB
             cursor.execute("INSERT INTO user_sessions (session_id, user_id) VALUES (%s, %s)", (session_id, user_id))
-            mysql.connection.commit()
+            conn.commit()
 
     # Identifikasi topik dokumen dari query
     @cache.memoize(timeout=300)
@@ -249,8 +265,9 @@ def hasil_search_ta():
     # Ambil preferensi pengguna --- (cookie) ---
     @cache.memoize(timeout=300)
     def get_preference_vec(user_token=None, window_day=7):
+        conn = ensure_connection()
         try:
-            with mysql.connection.cursor(MySQLdb.cursors.DictCursor) as cursor:
+            with conn.cursor(MySQLdb.cursors.DictCursor) as cursor:
                 if user_token is not None:
                     cursor.execute(
                         """SELECT user_query, COALESCE(rf.freq, 0) + COALESCE(log.freq, 0) AS total_freq, COALESCE(rf.freq_fb, 0) AS feedback_freq
@@ -326,7 +343,8 @@ def hasil_search_ta():
             top_topics = np.argsort(sims)[::-1][:3]
 
             results = []
-            with mysql.connection.cursor(MySQLdb.cursors.DictCursor) as cursor:
+            conn = ensure_connection()
+            with conn.cursor(MySQLdb.cursors.DictCursor) as cursor:
                 try:
                     for topic_id in top_topics:
                         cursor.execute("""
@@ -352,7 +370,8 @@ def hasil_search_ta():
     def get_top_similarities(preprocessed_title, dominant_topic):
         query_vector = get_fasttext_vector(preprocessed_title)
         
-        with mysql.connection.cursor(MySQLdb.cursors.DictCursor) as cursor:
+        conn = ensure_connection()
+        with conn.cursor(MySQLdb.cursors.DictCursor) as cursor:
             # Ambil dokumen dengan topik sama
             cursor.execute("SELECT d.id, d.judul, dv.vector FROM documents d JOIN vector_docs dv ON d.id = dv.id_doc WHERE d.topik_dominan = %s", (dominant_topic,))
             rows = cursor.fetchall()
@@ -394,7 +413,8 @@ def hasil_search_ta():
 
     # Simpan log rekomendasi jika pakai cookie
     if session.get('consent_given'):
-        with mysql.connection.cursor() as cursor:
+        conn = ensure_connection()
+        with conn.cursor() as cursor:
             # Simpan log rekomendasi
             for result in pref_results:
                 cursor.execute("""INSERT INTO log_recommendations (session_id, user_query, id_doc, similarity) 
@@ -404,7 +424,7 @@ def hasil_search_ta():
                 cursor.execute("""INSERT INTO log_recommendations (session_id, user_query, id_doc, similarity) 
                                VALUES ((SELECT id FROM user_sessions WHERE session_id = %s), %s, %s, %s)""",
                     (session_id, title, result['id'], result['similarity']))
-            mysql.connection.commit()
+            conn.commit()
     # End sistem Rekomendasi ===
 
     # Pagination
@@ -472,15 +492,16 @@ def relevance_feedback():
     if not relevant_docs and not irrelevant_docs:
         return redirect(url_for('hasil_search_ta', judul=query))
 
+    conn = ensure_connection()
     try:
-        with mysql.connection.cursor() as cursor:
+        with conn.cursor() as cursor:
             for doc_id in relevant_docs:
                 cursor.execute("INSERT INTO relevance_feedback (query, document_id, relevance, session_id) VALUES (%s, %s, %s, %s)", (query, doc_id, 1, session_id))
             for doc_id in irrelevant_docs:
                 cursor.execute("INSERT INTO relevance_feedback (query, document_id, relevance, session_id) VALUES (%s, %s, %s, %s)", (query, doc_id, 0, session_id))
-            mysql.connection.commit()
+            conn.commit()
     except Exception as e:
-        mysql.connection.rollback()
+        conn.rollback()
         print(f"Error saving relevance feedback: {e}")
 
     return redirect(url_for('hasil_search_ta', judul=query))
