@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, redirect, url_for, make_response, session, g
-import pandas as pd, nltk, string, math, pymysql
+import pandas as pd, nltk, string, math, pymysql, fasttext
 import numpy as np, json, uuid, secrets, traceback, os
 from nltk.tokenize import word_tokenize 
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory 
@@ -26,27 +26,11 @@ def get_connection():
     )
 conn = get_connection()
 
-# Buat wrapper hanya untuk file pickle
-old_np_load = np.load
-def np_load_fixed(file, *a, **k):
-    # Kalau file .npy biasa → jangan pakai allow_pickle
-    if str(file).endswith(".npy"):
-        return old_np_load(file, *a, **k)
-    # Kalau bukan .npy (misalnya .model) → pakai allow_pickle
-    if "allow_pickle" not in k:
-        k["allow_pickle"] = True
-    return old_np_load(file, *a, **k)
-
-np.load = np_load_fixed  # patch sementara
-
 # Load LDA final model, fasttext model, vektor dokumen, dan dictionary
 lda_model = LdaModel.load("model/lda/model_lda_terbaik.model")
 dictionary = Dictionary.load("model/lda/dictionary.dict")
-fasttext_model = FastText.load("model/fasttext/fasttext_model.bin")
+fasttext_model = fasttext.load_model("model/fasttext/fasttext_model.bin")
 df_doc_vectors = pd.read_csv("model/fasttext/dokumen_vektor.csv")
-
-# Kembalikan np.load seperti semula
-np.load = old_np_load
 
 # Load dataset
 df = pd.read_csv('dataset_ta.csv')
