@@ -27,9 +27,14 @@ def get_connection():
     )
 conn = get_connection()
 
-# Patch sementara numpy agar bisa load pickle
+# Buat wrapper hanya untuk file pickle
 old_np_load = np.load
-np.load = lambda *a, **k: old_np_load(*a, allow_pickle=True, **k)
+def np_load_fixed(*a, **k):
+    if "allow_pickle" not in k:
+        k["allow_pickle"] = True
+    return old_np_load(*a, **k)
+
+np.load = np_load_fixed  # patch sementara
 
 # Load LDA final model, fasttext model, vektor dokumen, dan dictionary
 lda_model = LdaModel.load("model/lda/model_lda_terbaik.model")
