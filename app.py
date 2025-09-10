@@ -30,7 +30,7 @@ model_path = "model/fasttext/fasttext_model.bin"
 
 # Jika file model fasttext belum ada maka download lewat GDrive
 if not os.path.exists(model_path):
-    url = "https://drive.google.com/file/d/1lmk3BtYdEnozvgWmECe0I8uQSrrleauD/view?usp=sharing"  # path model fasttext di Gdrive
+    url = "https://drive.google.com/uc?id=1lmk3BtYdEnozvgWmECe0I8uQSrrleauD"  # path model fasttext di Gdrive
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     print("Downloading FastText model...")
     gdown.download(url, model_path, quiet=False)
