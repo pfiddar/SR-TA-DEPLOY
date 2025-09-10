@@ -35,10 +35,8 @@ if not os.path.exists(model_path):
     print("Downloading FastText model...")
     gdown.download(url, model_path, quiet=False)
 
-file_path = "https://drive.google.com/file/d/1lmk3BtYdEnozvgWmECe0I8uQSrrleauD/view?usp=sharing"
-
-if os.path.exists(file_path):
-    size_mb = os.path.getsize(file_path) / (1024 * 1024)
+if os.path.exists(model_path):
+    size_mb = os.path.getsize(model_path) / (1024 * 1024)
     print(f"[INFO] FastText model ditemukan, ukuran: {size_mb:.2f} MB")
 else:
     print("[ERROR] FastText model tidak ditemukan!")
