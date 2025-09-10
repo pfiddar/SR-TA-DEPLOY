@@ -148,8 +148,8 @@
           <div class="flex flex-col">
             {% for result in result_searching %}
             <div class="result border-b-2 border-[#EAAD1E] rounded-sm py-8 flex flex-col max-w-full">
-              <div class="flex">
-                <img src="{{ url_for('static', filename='assets/images/image.png') }}" alt="Gambar" class="w-28" />
+              <div class="lg:flex justify-items-center">
+                <img src="{{ url_for('static', filename='assets/images/image.png') }}" alt="Gambar" class="w-28 h-36" />
                 <div class="ml-2">
                   <a href="{{ url_for('detail_ta', index=result.index) }}"
                     class="hover:cursor-pointer hover:text-amber-500 hover:no-underline text-lg font-extrabold text-slate-900 capitalize no-underline">
@@ -225,32 +225,32 @@
         <h5 class="text-lg font-bold mb-5 text-yellow-700">
           Berdasarkan Preferensi Anda
         </h5>
-          {% for result in pref_results %}
-          <ul class="my-2">
-            <li>
-              <a href="{{ url_for('detail_ta', index=result.id - 1)}}"
-                class="capitalize hover:text-amber-400 font-medium text-yellow-600">{{ result.judul }}</a>
-              <!-- <p class="text-yellow-700">Similarity Score: {{ result.similarity | round(3) }}</p> -->
-            </li>
-          </ul>
-          <div class="my-2 border-b border-amber-400"></div>
-          {% endfor %}
+        {% for result in pref_results %}
+        <ul class="my-2">
+          <li>
+            <a href="{{ url_for('detail_ta', index=result.id - 1)}}"
+              class="capitalize hover:text-amber-400 font-medium text-yellow-600">{{ result.judul }}</a>
+            <!-- <p class="text-yellow-700">Similarity Score: {{ result.similarity | round(3) }}</p> -->
+          </li>
+        </ul>
+        <div class="my-2 border-b border-amber-400"></div>
+        {% endfor %}
         {% endif %}
 
         <h5 class="text-lg font-bold mb-5 mt-7 text-yellow-700">
           Berdasarkan Pencarian Anda
         </h5>
         {% if general_results %}
-          {% for result in general_results %}
-          <ul class="my-2">
-            <li>
-              <a href="{{ url_for('detail_ta', index=result.id - 1)}}"
-                class="capitalize hover:text-amber-400 font-medium text-yellow-600">{{ result.judul }}</a>
-              <!-- <p class="text-yellow-700">Similarity Score: {{ result.similarity | round(3) }}</p> -->
-            </li>
-          </ul>
-          <div class="my-2 border-b border-amber-400"></div>
-          {% endfor %}
+        {% for result in general_results %}
+        <ul class="my-2">
+          <li>
+            <a href="{{ url_for('detail_ta', index=result.id - 1)}}"
+              class="capitalize hover:text-amber-400 font-medium text-yellow-600">{{ result.judul }}</a>
+            <!-- <p class="text-yellow-700">Similarity Score: {{ result.similarity | round(3) }}</p> -->
+          </li>
+        </ul>
+        <div class="my-2 border-b border-amber-400"></div>
+        {% endfor %}
         {% else %}
         <p>Belum ada rekomendasi untuk Anda.</p>
         {% endif %}
@@ -331,8 +331,8 @@
     });
 
     document.getElementById("menuToggle").addEventListener("click", function () {
-        document.getElementById("mobileMenu").classList.toggle("hidden");
-      });
+      document.getElementById("mobileMenu").classList.toggle("hidden");
+    });
   </script>
   <!-- End Cookie Script -->
   <!-- End Script -->

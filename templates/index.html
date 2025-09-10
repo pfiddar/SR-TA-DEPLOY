@@ -1,62 +1,47 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='assets/css/style.css') }}"
-    />
-  </head>
-  <body class="font-sans">
-    <div class="w-screen h-screen flex flex-wrap overflow-hidden">
-      <!-- Register Section -->
-      <div class="min-h-screen md:w-1/2 flex flex-col relative">
-        <div class="mt-5 ml-9">
-          <div class="w-full h-35">
-            <img
-              class="object-cover w-32 h-32"
-              src="{{ url_for('static', filename='assets/images/logo.png') }}"
-              alt="Background"
-            />
-          </div>
-          <div class="h-3/4 w-full mt-32">
-            <div class="relative h-20">
-              <span
-                class="text inline-block text-[58px] text-[#004b8f] font-bold"
-              ></span
-              ><span class="cursor"></span>
-            </div>
-            <div class="">
-              <p class="italic text-[22px]">
-                Search Engine Tugas Akhir Teknik Informatika <br />
-                Universitas Muhammadiyah Jember
-              </p>
-            </div>
-            <a
-              href="{{ url_for('search_ta') }}"
-              class="block bg-[#eaad1e] text-[#004b8f] font-bold text-2xl py-3 px-4 rounded-full w-[300px] h-[60px] mt-12 transition duration-300 ease-in-out hover:bg-[#d39900] hover:shadow-xl text-center"
-            >
-              Mulai
-            </a>
-          </div>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}" />
+</head>
+
+<body class="font-sans">
+  <div class="w-screen h-screen flex flex-wrap overflow-hidden">
+    <!-- Register Section -->
+    <div class="min-h-screen md:w-1/2 flex flex-col relative">
+      <div class="mt-5 ml-9">
+        <div class="w-full h-35">
+          <img class="object-cover w-32 h-32" src="{{ url_for('static', filename='assets/images/logo.png') }}"
+            alt="Background" />
         </div>
-      </div>
-      <div
-        class="w-1/2 max-w-screen-lg mx-auto bg-[#f6f9ff] flex items-center justify-center"
-      >
-        <div
-          class="w-full h-full flex items-center justify-center border-l-8 border-[#eaad1e]"
-        >
-          <img
-            class="object-cover w-full h-full filter brightness-50"
-            src="{{ url_for('static', filename='assets/images/unmuh.png') }}"
-            alt="Background"
-          />
+        <div class="h-3/4 w-full md:mt-10 mt-5">
+          <div class="relative h-56">
+            <span class="text inline-block text-[58px] text-[#004b8f] font-bold"></span><span class="cursor"></span>
+          </div>
+          <div class="">
+            <p class="italic text-[22px]">
+              Search Engine Tugas Akhir Teknik Informatika <br />
+              Universitas Muhammadiyah Jember
+            </p>
+          </div>
+          <a href="{{ url_for('search_ta') }}"
+            class="block bg-[#eaad1e] text-[#004b8f] font-bold text-2xl py-3 px-4 rounded-full w-[300px] h-[60px] mt-12 transition duration-300 ease-in-out hover:bg-[#d39900] hover:shadow-xl text-center">
+            Mulai
+          </a>
         </div>
       </div>
     </div>
-    <script src="{{ url_for('static', filename='assets/js/typewriter.js') }}"></script>
-  </body>
+    <div class="w-1/2 max-w-screen-lg mx-auto bg-[#f6f9ff] flex items-center justify-center">
+      <div class="w-full h-full flex items-center justify-center border-l-8 border-[#eaad1e]">
+        <img class="object-cover w-full h-full filter brightness-50"
+          src="{{ url_for('static', filename='assets/images/unmuh.png') }}" alt="Background" />
+      </div>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='assets/js/typewriter.js') }}"></script>
+</body>
+
 </html>
