@@ -520,4 +520,5 @@ def relevance_feedback():
     return redirect(url_for('hasil_search_ta', judul=query))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 8080)) 
+    app.run(host="0.0.0.0", port=port, debug=False)
