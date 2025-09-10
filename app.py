@@ -285,7 +285,7 @@ def hasil_search_ta():
     @cache.memoize(timeout=300)
     def get_fasttext_vector(text):
         tokens = preprocess_to_tokens(text)
-        vectors = [fasttext_model.get_word_vector[word] for word in tokens]
+        vectors = [fasttext_model.get_word_vector(word) for word in tokens]
         if not vectors:
             return np.zeros(fasttext_model.get_dimension())
         return np.mean(vectors, axis=0)
