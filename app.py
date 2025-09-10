@@ -7,7 +7,7 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer 
 from sklearn.metrics.pairwise import cosine_similarity 
 from flask_caching import Cache
-from gensim.models import LdaModel, FastText
+from gensim.models import LdaModel
 from gensim.corpora import Dictionary
 
 app = Flask(__name__, template_folder='templates')
@@ -25,6 +25,14 @@ def get_connection():
         cursorclass=pymysql.cursors.DictCursor
     )
 conn = get_connection()
+
+file_path = "model/fasttext/fasttext_model.bin"
+
+if os.path.exists(file_path):
+    size_mb = os.path.getsize(file_path) / (1024 * 1024)
+    print(f"[INFO] FastText model ditemukan, ukuran: {size_mb:.2f} MB")
+else:
+    print("[ERROR] FastText model tidak ditemukan!")
 
 # Load LDA final model, fasttext model, vektor dokumen, dan dictionary
 lda_model = LdaModel.load("model/lda/model_lda_terbaik.model")
