@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, redirect, url_for, make_response, session, g
 import pandas as pd, nltk, string, math, pymysql, fasttext
-import numpy as np, json, uuid, secrets, traceback, os
+import numpy as np, json, uuid, secrets, traceback, os, gdown
 from nltk.tokenize import word_tokenize 
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory 
 from nltk.corpus import stopwords 
@@ -26,18 +26,19 @@ def get_connection():
     )
 conn = get_connection()
 
-file_path = "model/fasttext/fasttext_model.bin"
+model_path = "model/fasttext/fasttext_model.bin"
 
-if os.path.exists(file_path):
-    size_mb = os.path.getsize(file_path) / (1024 * 1024)
-    print(f"[INFO] FastText model ditemukan, ukuran: {size_mb:.2f} MB")
-else:
-    print("[ERROR] FastText model tidak ditemukan!")
+# Jika file model fasttext belum ada maka download lewat GDrive
+if not os.path.exists(model_path):
+    url = "https://drive.google.com/file/d/1lmk3BtYdEnozvgWmECe0I8uQSrrleauD/view?usp=sharing"  # path model fasttext di Gdrive
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    print("Downloading FastText model...")
+    gdown.download(url, model_path, quiet=False)
 
 # Load LDA final model, fasttext model, vektor dokumen, dan dictionary
 lda_model = LdaModel.load("model/lda/model_lda_terbaik.model")
 dictionary = Dictionary.load("model/lda/dictionary.dict")
-fasttext_model = fasttext.load_model("model/fasttext/fasttext_model.bin")
+fasttext_model = fasttext.load_model(model_path)
 df_doc_vectors = pd.read_csv("model/fasttext/dokumen_vektor.csv")
 
 # Load dataset
