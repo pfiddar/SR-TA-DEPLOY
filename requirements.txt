@@ -28,3 +28,4 @@ wrapt==1.17.2
 PyMySQL==1.1.0
 gunicorn==23.0.0
 fasttext==0.9.3
+gdown==5.2.0
