@@ -15,7 +15,7 @@ cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 app.secret_key = secrets.token_hex(32) # Security enkrip session
 
 # Configure MySQL
-def get_connection():
+def get_connection_dict():
     return pymysql.connect(
         host=os.getenv("MYSQLHOST"),
         port=int(os.getenv("MYSQLPORT", 10724)),
@@ -24,7 +24,17 @@ def get_connection():
         database=os.getenv("MYSQLDATABASE"),
         cursorclass=pymysql.cursors.DictCursor
     )
-conn = get_connection()
+def get_connection_tuple():
+    return pymysql.connect(
+        host=os.getenv("MYSQLHOST"),
+        port=int(os.getenv("MYSQLPORT", 10724)),
+        user=os.getenv("MYSQLUSER"),
+        password=os.getenv("MYSQLPASSWORD"),
+        database=os.getenv("MYSQLDATABASE"),
+        cursorclass=pymysql.cursors.Cursor
+    )
+conn_tuple = get_connection_tuple()
+conn_dict = get_connection_dict()
 
 model_path = "model/fasttext/fasttext_model.bin"
 
@@ -72,13 +82,22 @@ def safe_stem(word, stemmer):
         print(f"Stemming error: {e}")
         return word
 
-def ensure_connection():
-    global conn
+# Buat koneksi baru jika terputus untuk koneksi tuple dan dict
+def ensure_connection_tuple():
+    global conn_tuple
     try:
-        conn.ping(reconnect=True)  
+        conn_tuple.ping(reconnect=True)
     except:
-        conn = get_db_connection()  # Buat koneksi baru jika terputus
-    return conn
+        conn_tuple = get_connection_tuple()
+    return conn_tuple
+
+def ensure_connection_dict():
+    global conn_dict
+    try:
+        conn_dict.ping(reconnect=True)
+    except:
+        conn_dict = get_connection_dict()
+    return conn_dict
 
 # Initialize custom stopwords and combine all stopwords
 custom_stopwords = set(open('custom_stoplist.txt').read().split())
@@ -138,7 +157,7 @@ def hasil_search_ta():
     session['last_query'] = title
 
     # Check if the documents table is empty
-    conn = ensure_connection()
+    conn = ensure_connection_tuple()
     with conn.cursor() as cursor:
         cursor.execute("SELECT COUNT(*) FROM documents")
         doc_count = cursor.fetchone()[0]
@@ -163,7 +182,7 @@ def hasil_search_ta():
         vectorizer = TfidfVectorizer(max_features=1000)
         tfidf = vectorizer.fit_transform(df['deskripsi'].apply(preprocess_text))
 
-        conn = ensure_connection()
+        conn = ensure_connection_tuple()
         try:
             with conn.cursor() as cursor:
                 cursor.execute("DELETE FROM word_document")
@@ -188,7 +207,7 @@ def hasil_search_ta():
         scores = cosine_similarity(title_vector, tfidf)[0]
 
         # Tambahkan bobot ekstra berdasarkan umpan balik relevansi
-        conn = ensure_connection()
+        conn = ensure_connection_tuple()
         try:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT document_id FROM relevance_feedback WHERE query = %s", (preprocessed_title,))
@@ -235,7 +254,7 @@ def hasil_search_ta():
         session_id = g.session_id
 
         # Ambil user_id dari tabel users
-        conn = ensure_connection()
+        conn = ensure_connection_tuple()
         with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM users WHERE user_token = %s", (user_token,))
             user = cursor.fetchone()
@@ -279,7 +298,7 @@ def hasil_search_ta():
     # Ambil preferensi pengguna --- (cookie) ---
     @cache.memoize(timeout=300)
     def get_preference_vec(user_token=None, window_day=7):
-        conn = ensure_connection()
+        conn = ensure_connection_dict()
         try:
             with conn.cursor() as cursor:
                 if user_token is not None:
@@ -356,7 +375,7 @@ def hasil_search_ta():
             top_topics = np.argsort(sims)[::-1][:3]
 
             results = []
-            conn = ensure_connection()
+            conn = ensure_connection_dict()
             with conn.cursor() as cursor:
                 try:
                     for topic_id in top_topics:
@@ -383,7 +402,7 @@ def hasil_search_ta():
     def get_top_similarities(preprocessed_title, dominant_topic):
         query_vector = get_fasttext_vector(preprocessed_title)
         
-        conn = ensure_connection()
+        conn = ensure_connection_dict()
         with conn.cursor() as cursor:
             # Ambil dokumen dengan topik sama
             cursor.execute("SELECT d.id, d.judul, dv.vector FROM documents d JOIN vector_docs dv ON d.id = dv.id_doc WHERE d.topik_dominan = %s", (dominant_topic,))
@@ -426,7 +445,7 @@ def hasil_search_ta():
 
     # Simpan log rekomendasi jika pakai cookie
     if session.get('consent_given'):
-        conn = ensure_connection()
+        conn = ensure_connection_tuple()
         with conn.cursor() as cursor:
             # Simpan log rekomendasi
             for result in pref_results:
@@ -505,7 +524,7 @@ def relevance_feedback():
     if not relevant_docs and not irrelevant_docs:
         return redirect(url_for('hasil_search_ta', judul=query))
 
-    conn = ensure_connection()
+    conn = ensure_connection_tuple()
     try:
         with conn.cursor() as cursor:
             for doc_id in relevant_docs:
@@ -520,5 +539,4 @@ def relevance_feedback():
     return redirect(url_for('hasil_search_ta', judul=query))
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8080)) 
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(debug=True)
