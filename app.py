@@ -35,6 +35,12 @@ if not os.path.exists(model_path):
     print("Downloading FastText model...")
     gdown.download(url, model_path, quiet=False)
 
+if os.path.exists(url):
+    size_mb = os.path.getsize(url) / (1024 * 1024)
+    print(f"[INFO] FastText model ditemukan, ukuran: {size_mb:.2f} MB")
+else:
+    print("[ERROR] FastText model tidak ditemukan!")
+
 # Load LDA final model, fasttext model, vektor dokumen, dan dictionary
 lda_model = LdaModel.load("model/lda/model_lda_terbaik.model")
 dictionary = Dictionary.load("model/lda/dictionary.dict")
