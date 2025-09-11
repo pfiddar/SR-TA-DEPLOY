@@ -193,32 +193,93 @@
           </div>
         </form>
         <!-- Pagination -->
-        <div class="flex justify-center mt-4 mb-5">
-          <nav>
-            <ul class="inline-flex -space-x-px text-base h-10">
-              {% if page > 1 %}
-              <li>
+        <div class="flex items-center justify-between border-t border-white/10 px-4 py-3 sm:px-6">
+          <!-- <div class="flex flex-1 justify-between sm:hidden">
+            <a href="#"
+              class="relative inline-flex items-center rounded-md border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-white/10">Previous</a>
+            <a href="#"
+              class="relative ml-3 inline-flex items-center rounded-md border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-white/10">Next</a>
+          </div> -->
+          <div class="hidden sm:flex sm:flex-1 sm:items-center justify-center">
+            <!-- <div>
+              <p class="text-zinc-950">
+                Showing
+                <span class="font-medium text-[#EAAD1E]">1</span>
+                to
+                <span class="font-medium text-[#EAAD1E]">10</span>
+                of
+                <span class="font-medium text-[#EAAD1E]">97</span>
+                results
+              </p>
+            </div> -->
+            
+            <div>
+              <nav aria-label="Pagination" class="isolate inline-flex -space-x-px rounded-md">
+
+                <!-- Tombol previous -->
+                {% if page > 1 %}
                 <a href="{{ url_for('hasil_search_ta', judul=title, page=page-1) }}"
-                  class="flex font-semibold items-center justify-center px-4 h-10 ms-0 leading-tight text-gray-800 bg-white border border-e-0 border-[#EAAD1E] rounded-s-lg transition-all duration-500 hover:bg-[#EAAD1E] hover:text-gray-700">Previous</a>
-              </li>
-              {% endif %} {% for i in range(1, total_pages + 1) %}
-              <li>
-                <a href="{{ url_for('hasil_search_ta', judul=title, page=i) }}"
-                  class="flex font-semibold items-center justify-center px-4 h-10 leading-tight {% if i == page %} text-[#004B8F] border border-[#EAAD1E] bg-blue-50 hover:bg-[#EAAD1E] hover:text-[#004B8F] {% else %}text-gray-800 bg-white border border-[#EAAD1E] transition-all duration-500 hover:bg-[#EAAD1E] hover:text-gray-700{% endif %}">
-                  {{ i }}
+                  class="relative inline-flex items-center rounded-l-md px-2 py-2 text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 focus:z-20">
+                  <span class="sr-only">Previous</span>
+                  <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5">
+                    <path
+                      d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z"
+                      clip-rule="evenodd" fill-rule="evenodd" />
+                  </svg>
                 </a>
-              </li>
-              {% endfor %} {% if page < total_pages %} <li>
-                <a href="{{ url_for('hasil_search_ta', judul=title, page=page+1) }}"
-                  class="flex font-semibold items-center justify-center px-4 h-10 leading-tight text-gray-800 bg-white border border-[#EAAD1E] rounded-e-lg transition-all duration-500 hover:bg-[#EAAD1E] hover:text-gray-700">Next</a>
-                </li>
                 {% endif %}
-            </ul>
-          </nav>
+
+                <!-- Halaman pertama selalu tampil -->
+                <a href="{{ url_for('hasil_search_ta', judul=title, page=1) }}" 
+                class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {% if page == 1 %} bg-[#EAAD1E] text-white {% else %} text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">1</a>
+
+                <!-- Titik-titik sebelum range -->
+                {% if page > 4 %}
+                <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-400">...</span>
+                {% endif %}
+
+                <!-- Halaman sekitar page aktif -->
+                {% for i in range(page-2, page+3) %}
+                  {% if i > 1 and i < total_pages %}
+                  <a href="{{ url_for('hasil_search_ta', judul=title, page=1) }}" 
+                    class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {% if i == page %} bg-[#EAAD1E] text-white {% else %} text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">{{ i }}</a>
+                  {% endif %}
+                {% endfor %}
+
+                <!-- Titik-titik setelah range -->
+                {% if page < total_pages - 3 %}
+                <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-400">...</span>
+                {% endif %}
+
+                <!-- Halaman terakhir selalu tampil jika > 1 -->
+                {% if total_pages > 1 %}
+                <a href="{{ url_for('hasil_search_ta', judul=title, page=total_pages) }}" 
+                  class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {% if page == total_pages %} bg-[#EAAD1E] text-white {% else %} text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">
+                  {{ total_pages}}</a>
+                {% endif %}
+
+                <!-- Tombol next -->
+                {% if page < total_pages %}
+                <a href="{{ url_for('hasil_search_ta', judul=title, page=page+1) }}"
+                  class="relative inline-flex items-center rounded-r-md px-2 py-2 text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 focus:z-20">
+                  <span class="sr-only">Next</span>
+                  <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5">
+                    <path
+                      d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z"
+                      clip-rule="evenodd" fill-rule="evenodd" />
+                  </svg>
+                </a>
+                {% endif %}
+
+              </nav>
+            </div>
+
+          </div>
         </div>
         <!-- End Pagination -->
       </div>
       <!-- End Pencarian -->
+
       <!-- Sistem Rekomendasi -->
       <div class="lg:col-span-4 bg-yellow-100 rounded-3xl p-5">
         {% if pref_results %}
@@ -236,7 +297,6 @@
         <div class="my-2 border-b border-amber-400"></div>
         {% endfor %}
         {% endif %}
-
         <h5 class="text-lg font-bold mb-5 mt-7 text-yellow-700">
           Berdasarkan Pencarian Anda
         </h5>
