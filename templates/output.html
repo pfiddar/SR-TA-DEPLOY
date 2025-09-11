@@ -229,33 +229,42 @@
                 </a>
                 {% endif %}
 
-                <!-- Halaman pertama selalu tampil -->
-                <a href="{{ url_for('hasil_search_ta', judul=title, page=1) }}" 
-                class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {% if page == 1 %} bg-[#EAAD1E] text-white {% else %} text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">1</a>
-
-                <!-- Titik-titik sebelum range -->
-                {% if page > 4 %}
-                <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-400">...</span>
-                {% endif %}
-
-                <!-- Halaman sekitar page aktif -->
-                {% for i in range(page-2, page+3) %}
-                  {% if i > 1 and i < total_pages %}
+                <!-- Jika total halaman <= 5, tampilkan semua nomor -->
+                {% if total_pages <= 5 %}
+                  {% for i in range(1, total_pages + 1) %}
                   <a href="{{ url_for('hasil_search_ta', judul=title, page=i) }}" 
                     class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {% if i == page %} bg-[#EAAD1E] text-white {% else %} text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">{{ i }}</a>
+                  {% endfor %}
+                {% else %}
+                  <!-- Halaman pertama selalu tampil -->
+                  {% if page > 2 %}
+                  <a href="{{ url_for('hasil_search_ta', judul=title, page=1) }}" 
+                  class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {% if page == 1 %} bg-[#EAAD1E] text-white {% else %} text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">1</a>
+
+                    <!-- Titik-titik sebelum range -->
+                    {% if page > 3 %}
+                    <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-400">...</span>
+                    {% endif %}
                   {% endif %}
-                {% endfor %}
 
-                <!-- Titik-titik setelah range -->
-                {% if page < total_pages - 3 %}
-                <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-400">...</span>
-                {% endif %}
+                  <!-- Halaman sekitar page aktif -->
+                  {% for i in range(page-1, page+2) %}
+                    {% if i > 0 and i < total_pages %}
+                    <a href="{{ url_for('hasil_search_ta', judul=title, page=i) }}" 
+                      class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {% if i == page %} bg-[#EAAD1E] text-white {% else %} text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">{{ i }}</a>
+                    {% endif %}
+                  {% endfor %}
 
-                <!-- Halaman terakhir selalu tampil jika > 1 -->
-                {% if total_pages > 1 %}
-                <a href="{{ url_for('hasil_search_ta', judul=title, page=total_pages) }}" 
-                  class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {% if page == total_pages %} bg-[#EAAD1E] text-white {% else %} text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">
-                  {{ total_pages}}</a>
+                  {% if page < total_pages - 2 %}
+                    <!-- Titik-titik setelah range -->
+                    {% if page < total_pages - 2 %}
+                    <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-400">...</span>
+                    {% endif %}
+                    <!-- Halaman terakhir selalu tampil jika > 1 -->
+                    <a href="{{ url_for('hasil_search_ta', judul=title, page=total_pages) }}" 
+                      class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {% if page == total_pages %} bg-[#EAAD1E] text-white {% else %} text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">
+                      {{ total_pages}}</a>
+                  {% endif %}
                 {% endif %}
 
                 <!-- Tombol next -->
