@@ -241,7 +241,7 @@
                 <!-- Halaman sekitar page aktif -->
                 {% for i in range(page-2, page+3) %}
                   {% if i > 1 and i < total_pages %}
-                  <a href="{{ url_for('hasil_search_ta', judul=title, page=1) }}" 
+                  <a href="{{ url_for('hasil_search_ta', judul=title, page=i) }}" 
                     class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {% if i == page %} bg-[#EAAD1E] text-white {% else %} text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">{{ i }}</a>
                   {% endif %}
                 {% endfor %}
