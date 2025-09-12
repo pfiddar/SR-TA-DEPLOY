@@ -7,6 +7,14 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer 
 from sklearn.metrics.pairwise import cosine_similarity 
 from flask_caching import Cache
+
+# patch supaya numpy.load selalu allow_pickle=True
+np_load_old = np.load
+def np_load(*args, **kwargs):
+    kwargs.setdefault('allow_pickle', True)
+    return np_load_old(*args, **kwargs)
+np.load = np_load
+
 from gensim.models import LdaModel, FastText
 from gensim.corpora import Dictionary
 
