@@ -194,25 +194,7 @@
         </form>
         <!-- Pagination -->
         <div class="flex items-center justify-between border-t border-white/10 px-4 py-3 sm:px-6">
-          <!-- <div class="flex flex-1 justify-between sm:hidden">
-            <a href="#"
-              class="relative inline-flex items-center rounded-md border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-white/10">Previous</a>
-            <a href="#"
-              class="relative ml-3 inline-flex items-center rounded-md border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-gray-200 hover:bg-white/10">Next</a>
-          </div> -->
-          <div class="hidden sm:flex sm:flex-1 sm:items-center justify-center">
-            <!-- <div>
-              <p class="text-zinc-950">
-                Showing
-                <span class="font-medium text-[#EAAD1E]">1</span>
-                to
-                <span class="font-medium text-[#EAAD1E]">10</span>
-                of
-                <span class="font-medium text-[#EAAD1E]">97</span>
-                results
-              </p>
-            </div> -->
-            
+          <div class="flex flex-1 items-center justify-center">
             <div>
               <nav aria-label="Pagination" class="isolate inline-flex -space-x-px rounded-md">
 
@@ -251,7 +233,7 @@
                   {% for i in range(page-1, page+2) %}
                     {% if i > 0 and i < total_pages %}
                     <a href="{{ url_for('hasil_search_ta', judul=title, page=i) }}" 
-                      class="relative inline-flex items-center px-4 py-2 text-sm font-semibold {% if i == page %} bg-[#EAAD1E] text-white {% else %} text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">{{ i }}</a>
+                      class="relative items-center px-4 py-2 text-sm font-semibold {% if i == page %} inline-flex bg-[#EAAD1E] text-white {% else %} hidden md:inline-flex text-zinc-950 ring-1 ring-inset ring-[#EAAD1E] hover:bg-white/5 {% endif %}">{{ i }}</a>
                     {% endif %}
                   {% endfor %}
 
