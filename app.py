@@ -405,7 +405,7 @@ def hasil_search_ta():
         conn = ensure_connection_dict()
         with conn.cursor() as cursor:
             # Ambil dokumen dengan topik sama
-            cursor.execute("SELECT d.id, d.judul, dv.vector FROM documents d JOIN vector_docs dv ON d.id = dv.id_doc WHERE d.topik_dominan = %s", (dominant_topic,))
+            cursor.execute("SELECT d.id, d.judul, dv.vector FROM documents d JOIN vector_docs_bins dv ON d.id = dv.id_doc WHERE d.topik_dominan = %s", (dominant_topic,))
             rows = cursor.fetchall()
 
         similarities = []
