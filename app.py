@@ -368,7 +368,11 @@ def hasil_search_ta():
             pref_vec = get_preference_vec(user_token)
             if pref_vec is None:
                 return []
+            print("[DEBUG] pref_vec shape:", pref_vec.shape if pref_vec is not None else None)
+            print("[DEBUG] pref_vec sample:", pref_vec[:10] if pref_vec is not None else None)
             topic_vecs = get_preference_topics() # Menghitung vektor tiap topik
+            print("[DEBUG] topic_vecs count:", len(topic_vecs))
+            print("[DEBUG] topic_vec[0] sample:", topic_vecs[0][:10])
 
             # Mencari 3 topik paling mirip
             sims = cosine_similarity([pref_vec], topic_vecs)[0]
@@ -390,6 +394,11 @@ def hasil_search_ta():
                                 'judul': row['judul'], 
                                 'similarity': sims[topic_id]
                         })
+                    for topic_id in top_topics:
+                        print(f"[DEBUG] Fetching docs for topic_id={topic_id}, limit={top_n_docs}")
+                        cursor.execute("SELECT COUNT(*) as cnt FROM documents WHERE topik_dominan = %s", (int(topic_id),))
+                        print("[DEBUG] Count docs for topic:", cursor.fetchone()['cnt'])
+
                 except Exception as e:
                     print("Error: ", e)
                     traceback.print_exc()
