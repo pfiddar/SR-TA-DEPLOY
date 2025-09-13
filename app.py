@@ -1,21 +1,13 @@
 from flask import Flask, request, render_template, redirect, url_for, make_response, session, g
-import pandas as pd, nltk, string, math, pymysql
-import numpy as np, json, uuid, secrets, traceback, os
+import pandas as pd, nltk, string, math, pymysql, fasttext
+import numpy as np, json, uuid, secrets, traceback, os, gdown
 from nltk.tokenize import word_tokenize 
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory 
 from nltk.corpus import stopwords 
 from sklearn.feature_extraction.text import TfidfVectorizer 
 from sklearn.metrics.pairwise import cosine_similarity 
 from flask_caching import Cache
-
-# patch supaya numpy.load selalu allow_pickle=True
-np_load_old = np.load
-def np_load(*args, **kwargs):
-    kwargs.setdefault('allow_pickle', True)
-    return np_load_old(*args, **kwargs)
-np.load = np_load
-
-from gensim.models import LdaModel, FastText
+from gensim.models import LdaModel
 from gensim.corpora import Dictionary
 
 app = Flask(__name__, template_folder='templates')
@@ -44,10 +36,25 @@ def get_connection_tuple():
 conn_tuple = get_connection_tuple()
 conn_dict = get_connection_dict()
 
+model_path = "model/fasttext/fasttext_model.bin"
+
+# Jika file model fasttext belum ada maka download lewat GDrive
+if not os.path.exists(model_path):
+    url = "https://drive.google.com/uc?id=1TncKz_Jh_SkYuUIs6GlLRxLHCndFKL5i"  # path model fasttext di Gdrive
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    print("Downloading FastText model...")
+    gdown.download(url, model_path, quiet=False)
+
+if os.path.exists(model_path):
+    size_mb = os.path.getsize(model_path) / (1024 * 1024)
+    print(f"[INFO] FastText model ditemukan, ukuran: {size_mb:.2f} MB")
+else:
+    print("[ERROR] FastText model tidak ditemukan!")
+
 # Load LDA final model, fasttext model, vektor dokumen, dan dictionary
 lda_model = LdaModel.load("model/lda/model_lda_terbaik.model")
 dictionary = Dictionary.load("model/lda/dictionary.dict")
-fasttext_model = FastText.load("model/fasttext/fasttext_model.model")
+fasttext_model = fasttext.load_model(model_path)
 df_doc_vectors = pd.read_csv("model/fasttext/dokumen_vektor.csv")
 
 # Load dataset
@@ -278,9 +285,9 @@ def hasil_search_ta():
     @cache.memoize(timeout=300)
     def get_fasttext_vector(text):
         tokens = preprocess_to_tokens(text)
-        vectors = [fasttext_model.wv[word] for word in tokens if word in fasttext_model.wv]
+        vectors = [fasttext_model.get_word_vector(word) for word in tokens]
         if not vectors:
-            return np.zeros(fasttext_model.vector_size)
+            return np.zeros(fasttext_model.get_dimension())
         return np.mean(vectors, axis=0)
     
     # Identifikasi topik query
