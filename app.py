@@ -385,7 +385,7 @@ def hasil_search_ta():
                     for topic_id in top_topics:
                         cursor.execute("""
                             SELECT id, judul, deskripsi FROM documents WHERE topik_dominan = %s LIMIT %s
-                        """, (int(topic_id), top_n_docs))
+                        """, (int(topic_id), top_n_docs // len(top_topics)))
                         rows = cursor.fetchall()
                         for row in rows:
                             results.append({
