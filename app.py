@@ -332,8 +332,16 @@ def hasil_search_ta():
                 freq_fb = float(row['feedback_freq'] or 0)
                 weight = freq_query + (0.5 * freq_fb)
                 bobot_vecs.append(fasttext_model.get_word_vector(row['user_query']) * weight)
+                # Debug
+                print("[DEBUG] query:", row['user_query'])
+                print("        freq_query:", freq_query)
+                print("        freq_feedback:", freq_fb)
+                print("        bobot:", weight)
+                print("        vektor dim:", len(vec))
             if not bobot_vecs:
                 return None
+            print("[DEBUG] total vektor terkumpul:", len(bobot_vecs))
+            print("[DEBUG] contoh vektor pertama:", bobot_vecs[0][:10]) 
             return np.mean(bobot_vecs, axis=0) # Rata-rata
         except Exception as e:
             print("Error: ", e)
