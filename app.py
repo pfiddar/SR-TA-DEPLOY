@@ -307,7 +307,7 @@ def hasil_search_ta():
                         FROM (
 							SELECT lr.user_query, COUNT(*) AS freq 
 							FROM log_recommendations lr
-							JOIN user_sessions us ON lr.session_id = us.session_id
+							JOIN user_sessions us ON lr.session_id = us.id
 							JOIN users u ON us.user_id = u.id 
 							WHERE u.user_token = %s GROUP BY lr.user_query
 						) log
