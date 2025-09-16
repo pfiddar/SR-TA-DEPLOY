@@ -320,9 +320,6 @@ def hasil_search_ta():
                         ) rf ON log.user_query = rf.query""", (user_token, user_token)
                     )
                     rows = cursor.fetchall()
-                    # DEBUG
-                    print("User Token Saat Ini: ", user_token)
-                    print("User Session Saat Ini: ", session_id)
                 else: 
                     return None
             
@@ -450,9 +447,12 @@ def hasil_search_ta():
     pref_results = []
     general_results = []
     if user_token:
+        print("[DEBUG] user_token ada:", user_token)
         if session_id:
+            print("[DEBUG] session_id ada:", session_id)
             try:
                 pref_results = get_preference_similarities()[:5]
+                print("[DEBUG] hasil pref_results:", pref_results)
                 general_results = get_top_similarities(preprocessed_title, dominant_topic)[:5]
             except Exception as e:
                 print("Error saat ambil rekomendasi dengan preferensi: ", e)
