@@ -320,6 +320,11 @@ def hasil_search_ta():
                         ) rf ON log.user_query = rf.query""", (user_token, user_token)
                     )
                     rows = cursor.fetchall()
+                    print(f"[DEBUG] Jumlah rows dari query preference: {len(rows)}")
+                    if rows:
+                        print("[DEBUG] Contoh row pertama:", rows[0])
+                    else:
+                        print("[DEBUG] Query preference tidak mengembalikan data")
                 else: 
                     return None
             
