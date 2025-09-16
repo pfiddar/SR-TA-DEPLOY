@@ -317,7 +317,7 @@ def hasil_search_ta():
                             JOIN user_sessions us ON rf.session_id = us.session_id
 							JOIN users u ON us.user_id = u.id 
                             WHERE u.user_token = %s
-                            AND rf.created_at >= NOW() - INTERVAL %s DAY 
+                            AND rf.created_at >= (NOW() - INTERVAL %s DAY) + INTERVAL 7 HOUR 
                             GROUP BY rf.query    
                         ) rf ON log.user_query = rf.query""", (user_token, user_token, window_day)
                     )
