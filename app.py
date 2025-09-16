@@ -371,7 +371,6 @@ def hasil_search_ta():
             raise    
     
     # Similarity antara preferensi dengan dokumen --- (cookie) ---
-    @cache.memoize(timeout=300)
     def get_preference_similarities():
             top_n_docs = int(request.args.get("top_n_docs", 5))
 
@@ -422,7 +421,6 @@ def hasil_search_ta():
             return sorted(results, key=lambda x: -x['similarity'])[:5]
 
     # Similarity antara query dengan dokumen terpilih
-    @cache.memoize(timeout=300)
     def get_top_similarities(preprocessed_title, dominant_topic):
         query_vector = get_fasttext_vector(preprocessed_title)
         
