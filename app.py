@@ -405,15 +405,12 @@ def hasil_search_ta():
                                 'similarity': sim_docs
                             })
                     # Debug
-                    # for topic_id in top_topics:
-                    #     print(f"[DEBUG] Fetching docs for topic_id={topic_id}, limit={top_n_docs}")
-                    #     cursor.execute("SELECT COUNT(*) as cnt FROM documents WHERE topik_dominan = %s", (int(topic_id),))
-                    #     print("[DEBUG] Count docs for topic:", cursor.fetchone()['cnt'])
                 except Exception as e:
                     print("Error: ", e)
                     traceback.print_exc()
                     raise
             # Mengurutkan hasil
+            print("Hasil preferensi: ", results[:5])
             return sorted(results, key=lambda x: -x['similarity'])[:5]
 
     # Similarity antara query dengan dokumen terpilih
