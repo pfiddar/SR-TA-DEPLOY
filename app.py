@@ -297,7 +297,7 @@ def hasil_search_ta():
 
     # Ambil preferensi pengguna --- (cookie) ---
     @cache.memoize(timeout=300)
-    def get_preference_vec(user_token=None, window_day=7):
+    def get_preference_vec(user_token=None):
         conn = ensure_connection_dict()
         try:
             with conn.cursor() as cursor:
@@ -317,9 +317,8 @@ def hasil_search_ta():
                             JOIN user_sessions us ON rf.session_id = us.session_id
 							JOIN users u ON us.user_id = u.id 
                             WHERE u.user_token = %s
-                            AND rf.created_at >= (NOW() - INTERVAL %s DAY) + INTERVAL 7 HOUR 
                             GROUP BY rf.query    
-                        ) rf ON log.user_query = rf.query""", (user_token, user_token, window_day)
+                        ) rf ON log.user_query = rf.query""", (user_token, user_token)
                     )
                     rows = cursor.fetchall()
                 else: 
