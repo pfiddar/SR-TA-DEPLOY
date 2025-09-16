@@ -410,8 +410,15 @@ def hasil_search_ta():
                     traceback.print_exc()
                     raise
             # Mengurutkan hasil
-            print("Hasil preferensi: ", results[:5])
-            return sorted(results, key=lambda x: -x['similarity'])[:5]
+            # return sorted(results, key=lambda x: -x['similarity'])[:5]
+            # Mengurutkan hasil setelah loop selesai
+            sorted_results = sorted(results, key=lambda x: -x['similarity'])
+
+            # Cetak 5 hasil terbaik dari list yang sudah diurutkan
+            print("Hasil preferensi setelah disortir: ", sorted_results[:5])
+
+            # Kembalikan 5 hasil terbaik
+            return sorted_results[:5]
 
     # Similarity antara query dengan dokumen terpilih
     def get_top_similarities(preprocessed_title, dominant_topic):
