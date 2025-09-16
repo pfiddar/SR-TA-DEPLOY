@@ -368,11 +368,13 @@ def hasil_search_ta():
     
     # Similarity antara preferensi dengan dokumen --- (cookie) ---
     def get_preference_similarities():
+        print("[DEBUG] >>> Masuk ke get_preference_similarities <<<")
         top_n_docs = int(request.args.get("top_n_docs", 5))
 
             # Hitung vektor preferensi
         pref_vec = get_preference_vec(user_token)
         if pref_vec is None:
+            print("[DEBUG] pref_vec kosong (None) → langsung return []")
             return []
             # Debug
             # print("[DEBUG] pref_vec shape:", pref_vec.shape if pref_vec is not None else None)
@@ -395,6 +397,7 @@ def hasil_search_ta():
                         SELECT d.id, d.judul, dv.vector FROM documents d JOIN vector_docs_bins dv ON d.id = dv.id_doc WHERE d.topik_dominan = %s LIMIT %s
                     """, (int(topic_id), top_n_docs))
                     rows = cursor.fetchall()
+                    print(f"[DEBUG] Jumlah dokumen dari topic_id={topic_id}: {len(rows)}")
                     for row in rows:
                         doc_vec = np.array(json.loads(row['vector']))
                         sim_docs = cosine_similarity([pref_vec], [doc_vec])[0][0]
