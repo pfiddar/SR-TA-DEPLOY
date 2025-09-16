@@ -321,6 +321,9 @@ def hasil_search_ta():
                         ) rf ON log.user_query = rf.query""", (user_token, user_token)
                     )
                     rows = cursor.fetchall()
+                    # DEBUG
+                    print("User Token Saat Ini: ", user_token)
+                    print("User Session Saat Ini: ", session_id)
                 else: 
                     return None
             
