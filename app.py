@@ -296,7 +296,6 @@ def hasil_search_ta():
         return render_template("output.html")
 
     # Ambil preferensi pengguna --- (cookie) ---
-    @cache.memoize(timeout=300)
     def get_preference_vec(user_token=None):
         conn = ensure_connection_dict()
         try:
