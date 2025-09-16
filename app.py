@@ -368,57 +368,57 @@ def hasil_search_ta():
     
     # Similarity antara preferensi dengan dokumen --- (cookie) ---
     def get_preference_similarities():
-            top_n_docs = int(request.args.get("top_n_docs", 5))
+        top_n_docs = int(request.args.get("top_n_docs", 5))
 
             # Hitung vektor preferensi
-            pref_vec = get_preference_vec(user_token)
-            if pref_vec is None:
-                return []
+        pref_vec = get_preference_vec(user_token)
+        if pref_vec is None:
+            return []
             # Debug
             # print("[DEBUG] pref_vec shape:", pref_vec.shape if pref_vec is not None else None)
             # print("[DEBUG] pref_vec sample:", pref_vec[:10] if pref_vec is not None else None)
-            topic_vecs = get_preference_topics() # Menghitung vektor tiap topik
+        topic_vecs = get_preference_topics() # Menghitung vektor tiap topik
             # Debug
             # print("[DEBUG] topic_vecs count:", len(topic_vecs))
             # print("[DEBUG] topic_vec[0] sample:", topic_vecs[0][:10])
 
-            # Mencari 3 topik paling mirip
-            sims = cosine_similarity([pref_vec], topic_vecs)[0]
-            top_topics = np.argsort(sims)[::-1][:3]
+        # Mencari 3 topik paling mirip
+        sims = cosine_similarity([pref_vec], topic_vecs)[0]
+        top_topics = np.argsort(sims)[::-1][:3]
 
-            results = []
-            conn = ensure_connection_dict()
-            with conn.cursor() as cursor:
-                try:
-                    for topic_id in top_topics:
-                        cursor.execute("""
-                            SELECT d.id, d.judul, dv.vector FROM documents d JOIN vector_docs_bins dv ON d.id = dv.id_doc WHERE d.topik_dominan = %s LIMIT %s
-                        """, (int(topic_id), top_n_docs))
-                        rows = cursor.fetchall()
-                        for row in rows:
-                            doc_vec = np.array(json.loads(row['vector']))
-                            sim_docs = cosine_similarity([pref_vec], [doc_vec])[0][0]
-                            results.append({
-                                'id': row['id'],
-                                'topic_id': int(topic_id), 
-                                'judul': row['judul'], 
-                                'similarity': sim_docs
-                            })
-                    # Debug
-                except Exception as e:
-                    print("Error: ", e)
-                    traceback.print_exc()
-                    raise
-            # Mengurutkan hasil
-            # return sorted(results, key=lambda x: -x['similarity'])[:5]
-            # Mengurutkan hasil setelah loop selesai
-            sorted_results = sorted(results, key=lambda x: -x['similarity'])
+        results = []
+        conn = ensure_connection_dict()
+        with conn.cursor() as cursor:
+            try:
+                for topic_id in top_topics:
+                    cursor.execute("""
+                        SELECT d.id, d.judul, dv.vector FROM documents d JOIN vector_docs_bins dv ON d.id = dv.id_doc WHERE d.topik_dominan = %s LIMIT %s
+                    """, (int(topic_id), top_n_docs))
+                    rows = cursor.fetchall()
+                    for row in rows:
+                        doc_vec = np.array(json.loads(row['vector']))
+                        sim_docs = cosine_similarity([pref_vec], [doc_vec])[0][0]
+                        results.append({
+                            'id': row['id'],
+                            'topic_id': int(topic_id), 
+                            'judul': row['judul'], 
+                            'similarity': sim_docs
+                        })
+                # Debug
+            except Exception as e:
+                print("Error: ", e)
+                traceback.print_exc()
+                raise
+        # Mengurutkan hasil
+        # return sorted(results, key=lambda x: -x['similarity'])[:5]
+        # Mengurutkan hasil setelah loop selesai
+        sorted_results = sorted(results, key=lambda x: -x['similarity'])
 
-            # Cetak 5 hasil terbaik dari list yang sudah diurutkan
-            print("Hasil preferensi setelah disortir: ", sorted_results[:5])
+        # Cetak 5 hasil terbaik dari list yang sudah diurutkan
+        print("Hasil preferensi setelah disortir: ", sorted_results[:5])
 
-            # Kembalikan 5 hasil terbaik
-            return sorted_results[:5]
+        # Kembalikan 5 hasil terbaik
+        return sorted_results[:5]
 
     # Similarity antara query dengan dokumen terpilih
     def get_top_similarities(preprocessed_title, dominant_topic):
