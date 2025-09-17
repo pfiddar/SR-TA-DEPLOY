@@ -295,71 +295,32 @@ def hasil_search_ta():
     if dominant_topic == -1:
         return render_template("output.html")
 
-    # Ambil user token dari DB
-    def get_user_id_from_token(user_token):
-        conn = ensure_connection_dict()
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT id FROM users WHERE user_token = %s", (user_token,))
-            row = cursor.fetchone()
-            return row['id'] if row else None
-
     # Ambil preferensi pengguna --- (cookie) ---
     def get_preference_vec(user_token=None):
         conn = ensure_connection_dict()
         try:
-            user_id = get_user_id_from_token(user_token)
             with conn.cursor() as cursor:
-                if user_id is not None:
-                    # Debug subquery log
-                    cursor.execute("""
-                        SELECT lr.user_query, COUNT(*) AS freq 
-                        FROM log_recommendations lr
-                        JOIN user_sessions us ON lr.session_id = us.id
-                        WHERE us.user_id = %s 
-                        GROUP BY lr.user_query
-                    """, (user_id,))
-                    rows_log = cursor.fetchall()
-                    print("[DEBUG] Rows dari log_recommendations:", rows_log)
-
-                    # Debug subquery rf
-                    cursor.execute("""
-                        SELECT rf.query, COUNT(*) AS freq, 
-                            SUM(CASE WHEN rf.relevance > 0 THEN 1 ELSE 0 END) AS freq_fb
-                        FROM relevance_feedback rf 
-                        JOIN user_sessions us ON rf.session_id = us.session_id
-                        WHERE us.user_id = %s
-                        GROUP BY rf.query
-                    """, (user_id,))
-                    rows_rf = cursor.fetchall()
-                    print("[DEBUG] Rows dari relevance_feedback:", rows_rf)
-
+                if user_token is not None:
                     cursor.execute(
                         """SELECT user_query, COALESCE(rf.freq, 0) + COALESCE(log.freq, 0) AS total_freq, COALESCE(rf.freq_fb, 0) AS feedback_freq
                         FROM (
 							SELECT lr.user_query, COUNT(*) AS freq 
 							FROM log_recommendations lr
 							JOIN user_sessions us ON lr.session_id = us.id
-							WHERE us.user_id = %s 
+                            JOIN users u ON us.user_id = u.id 
+							WHERE u.user_token = %s 
                             GROUP BY lr.user_query
 						) log
                         LEFT JOIN (
                             SELECT rf.query, COUNT(*) AS freq, SUM(CASE WHEN rf.relevance > 0 THEN 1 ELSE 0 END) AS freq_fb
                             FROM relevance_feedback rf 
                             JOIN user_sessions us ON rf.session_id = us.session_id
-                            WHERE us.user_id = %s
+                            JOIN users u ON us.user_id = u.id 
+                            WHERE u.user_token = %s
                             GROUP BY rf.query    
-                        ) rf ON log.user_query = rf.query""", (user_id, user_id)
+                        ) rf ON log.user_query = rf.query""", (user_token, user_token)
                     )
                     rows = cursor.fetchall()
-                    print("ID User ada: ", user_id)
-                    print("User Token ada: ", user_token)
-                    print(f"[DEBUG] Jumlah rows dari query preference: {len(rows)}")
-                    if rows:
-                        print("[DEBUG] Contoh row pertama:", rows[0])
-                    else:
-                        print("[DEBUG] Query preference tidak mengembalikan data")
-                else: 
-                    return None
             
             # Hitung bobot & vektor rata-rata
             bobot_vecs = []
@@ -369,16 +330,8 @@ def hasil_search_ta():
                 weight = freq_query + (0.5 * freq_fb)
                 vec = get_fasttext_vector(row['user_query']) 
                 bobot_vecs.append(vec * weight)
-                # Debug
-                print("[DEBUG] query:", row['user_query'])
-                print("        freq_query:", freq_query)
-                print("        freq_feedback:", freq_fb)
-                print("        bobot:", weight)
-                print("        vektor dim:", len(vec))
             if not bobot_vecs:
                 return None
-            print("[DEBUG] total vektor terkumpul:", len(bobot_vecs))
-            print("[DEBUG] contoh vektor pertama:", bobot_vecs[0][:10]) 
             return np.mean(bobot_vecs, axis=0) # Rata-rata
         except Exception as e:
             print("Error: ", e)
@@ -406,21 +359,13 @@ def hasil_search_ta():
     
     # Similarity antara preferensi dengan dokumen --- (cookie) ---
     def get_preference_similarities():
-        print("[DEBUG] >>> Masuk ke get_preference_similarities <<<")
         top_n_docs = int(request.args.get("top_n_docs", 5))
 
             # Hitung vektor preferensi
         pref_vec = get_preference_vec(user_token)
         if pref_vec is None:
-            print("[DEBUG] pref_vec kosong (None) → langsung return []")
             return []
-            # Debug
-            # print("[DEBUG] pref_vec shape:", pref_vec.shape if pref_vec is not None else None)
-            # print("[DEBUG] pref_vec sample:", pref_vec[:10] if pref_vec is not None else None)
         topic_vecs = get_preference_topics() # Menghitung vektor tiap topik
-            # Debug
-            # print("[DEBUG] topic_vecs count:", len(topic_vecs))
-            # print("[DEBUG] topic_vec[0] sample:", topic_vecs[0][:10])
 
         # Mencari 3 topik paling mirip
         sims = cosine_similarity([pref_vec], topic_vecs)[0]
@@ -451,15 +396,7 @@ def hasil_search_ta():
                 traceback.print_exc()
                 raise
         # Mengurutkan hasil
-        # return sorted(results, key=lambda x: -x['similarity'])[:5]
-        # Mengurutkan hasil setelah loop selesai
-        sorted_results = sorted(results, key=lambda x: -x['similarity'])
-
-        # Cetak 5 hasil terbaik dari list yang sudah diurutkan
-        print("Hasil preferensi setelah disortir: ", sorted_results[:5])
-
-        # Kembalikan 5 hasil terbaik
-        return sorted_results[:5]
+        return sorted(results, key=lambda x: -x['similarity'])[:5]
 
     # Similarity antara query dengan dokumen terpilih
     def get_top_similarities(preprocessed_title, dominant_topic):
@@ -495,12 +432,10 @@ def hasil_search_ta():
         if session_id:
             try:
                 pref_results = get_preference_similarities()[:5]
-                print("[DEBUG] hasil pref_results:", pref_results)
                 general_results = get_top_similarities(preprocessed_title, dominant_topic)[:5]
                 # Fallback
                 if not pref_results:
                     pref_results = random.sample(general_results, min(5, len(general_results)))
-                    print("[DEBUG] pref_results fallback (pakai general_results):", pref_results)
             except Exception as e:
                 print("Error saat ambil rekomendasi dengan preferensi: ", e)
         else:
