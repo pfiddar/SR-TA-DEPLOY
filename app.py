@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, redirect, url_for, make_response, session, g
 import pandas as pd, nltk, string, math, pymysql, fasttext
-import numpy as np, json, uuid, secrets, traceback, os, gdown
+import numpy as np, json, uuid, secrets, traceback, os, gdown, random
 from nltk.tokenize import word_tokenize 
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory 
 from nltk.corpus import stopwords 
@@ -332,7 +332,7 @@ def hasil_search_ta():
                     """, (user_id,))
                     rows_rf = cursor.fetchall()
                     print("[DEBUG] Rows dari relevance_feedback:", rows_rf)
-                    
+
                     cursor.execute(
                         """SELECT user_query, COALESCE(rf.freq, 0) + COALESCE(log.freq, 0) AS total_freq, COALESCE(rf.freq_fb, 0) AS feedback_freq
                         FROM (
@@ -486,7 +486,7 @@ def hasil_search_ta():
                 continue
 
         # Mengurutkan similarity tertinggi
-        return sorted(similarities, key=lambda x: -x['similarity'])[:10]
+        return sorted(similarities, key=lambda x: -x['similarity'])
         
     # Hasil rekomendasi
     pref_results = []
@@ -497,6 +497,10 @@ def hasil_search_ta():
                 pref_results = get_preference_similarities()[:5]
                 print("[DEBUG] hasil pref_results:", pref_results)
                 general_results = get_top_similarities(preprocessed_title, dominant_topic)[:5]
+                # Fallback
+                if not pref_results:
+                    pref_results = random.sample(general_results, min(5, len(general_results)))
+                    print("[DEBUG] pref_results fallback (pakai general_results):", pref_results)
             except Exception as e:
                 print("Error saat ambil rekomendasi dengan preferensi: ", e)
         else:
