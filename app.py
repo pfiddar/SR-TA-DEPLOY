@@ -320,6 +320,7 @@ def hasil_search_ta():
                         ) rf ON log.user_query = rf.query""", (user_token, user_token)
                     )
                     rows = cursor.fetchall()
+                    print("User Token ada: ", user_token)
                     print(f"[DEBUG] Jumlah rows dari query preference: {len(rows)}")
                     if rows:
                         print("[DEBUG] Contoh row pertama:", rows[0])
@@ -459,9 +460,7 @@ def hasil_search_ta():
     pref_results = []
     general_results = []
     if user_token:
-        print("[DEBUG] user_token ada:", user_token)
         if session_id:
-            print("[DEBUG] session_id ada:", session_id)
             try:
                 pref_results = get_preference_similarities()[:5]
                 print("[DEBUG] hasil pref_results:", pref_results)
