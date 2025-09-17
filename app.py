@@ -295,12 +295,21 @@ def hasil_search_ta():
     if dominant_topic == -1:
         return render_template("output.html")
 
+    # Ambil user token dari DB
+    def get_user_id_from_token(user_token):
+        conn = ensure_connection_dict()
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM users WHERE user_token = %s", (user_token,))
+            row = cursor.fetchone()
+            return row['id'] if row else None
+
     # Ambil preferensi pengguna --- (cookie) ---
     def get_preference_vec(user_token=None):
         conn = ensure_connection_dict()
         try:
+            user_id = get_user_id_from_token(user_token)
             with conn.cursor() as cursor:
-                if user_token is not None:
+                if user_id is not None:
                     cursor.execute(
                         """SELECT user_query, COALESCE(rf.freq, 0) + COALESCE(log.freq, 0) AS total_freq, COALESCE(rf.freq_fb, 0) AS feedback_freq
                         FROM (
@@ -308,18 +317,20 @@ def hasil_search_ta():
 							FROM log_recommendations lr
 							JOIN user_sessions us ON lr.session_id = us.id
 							JOIN users u ON us.user_id = u.id 
-							WHERE u.user_token = %s GROUP BY lr.user_query
+							WHERE u.user_id = %s 
+                            GROUP BY lr.user_query
 						) log
                         LEFT JOIN (
                             SELECT rf.query, COUNT(*) AS freq, SUM(CASE WHEN rf.relevance > 0 THEN 1 ELSE 0 END) AS freq_fb
                             FROM relevance_feedback rf 
                             JOIN user_sessions us ON rf.session_id = us.session_id
 							JOIN users u ON us.user_id = u.id 
-                            WHERE u.user_token = %s
+                            WHERE u.user_id = %s
                             GROUP BY rf.query    
-                        ) rf ON log.user_query = rf.query""", (user_token, user_token)
+                        ) rf ON log.user_query = rf.query""", (user_id, user_id)
                     )
                     rows = cursor.fetchall()
+                    print("ID User ada: ", user_id)
                     print("User Token ada: ", user_token)
                     print(f"[DEBUG] Jumlah rows dari query preference: {len(rows)}")
                     if rows:
