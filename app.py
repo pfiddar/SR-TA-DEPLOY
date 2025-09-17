@@ -310,6 +310,29 @@ def hasil_search_ta():
             user_id = get_user_id_from_token(user_token)
             with conn.cursor() as cursor:
                 if user_id is not None:
+                    # Debug subquery log
+                    cursor.execute("""
+                        SELECT lr.user_query, COUNT(*) AS freq 
+                        FROM log_recommendations lr
+                        JOIN user_sessions us ON lr.session_id = us.id
+                        WHERE us.user_id = %s 
+                        GROUP BY lr.user_query
+                    """, (user_id,))
+                    rows_log = cursor.fetchall()
+                    print("[DEBUG] Rows dari log_recommendations:", rows_log)
+
+                    # Debug subquery rf
+                    cursor.execute("""
+                        SELECT rf.query, COUNT(*) AS freq, 
+                            SUM(CASE WHEN rf.relevance > 0 THEN 1 ELSE 0 END) AS freq_fb
+                        FROM relevance_feedback rf 
+                        JOIN user_sessions us ON rf.session_id = us.session_id
+                        WHERE us.user_id = %s
+                        GROUP BY rf.query
+                    """, (user_id,))
+                    rows_rf = cursor.fetchall()
+                    print("[DEBUG] Rows dari relevance_feedback:", rows_rf)
+                    
                     cursor.execute(
                         """SELECT user_query, COALESCE(rf.freq, 0) + COALESCE(log.freq, 0) AS total_freq, COALESCE(rf.freq_fb, 0) AS feedback_freq
                         FROM (
