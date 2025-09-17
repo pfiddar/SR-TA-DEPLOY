@@ -316,16 +316,14 @@ def hasil_search_ta():
 							SELECT lr.user_query, COUNT(*) AS freq 
 							FROM log_recommendations lr
 							JOIN user_sessions us ON lr.session_id = us.id
-							JOIN users u ON us.user_id = u.id 
-							WHERE u.user_id = %s 
+							WHERE us.user_id = %s 
                             GROUP BY lr.user_query
 						) log
                         LEFT JOIN (
                             SELECT rf.query, COUNT(*) AS freq, SUM(CASE WHEN rf.relevance > 0 THEN 1 ELSE 0 END) AS freq_fb
                             FROM relevance_feedback rf 
                             JOIN user_sessions us ON rf.session_id = us.session_id
-							JOIN users u ON us.user_id = u.id 
-                            WHERE u.user_id = %s
+                            WHERE us.user_id = %s
                             GROUP BY rf.query    
                         ) rf ON log.user_query = rf.query""", (user_id, user_id)
                     )
