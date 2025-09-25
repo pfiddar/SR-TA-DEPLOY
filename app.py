@@ -424,49 +424,28 @@ def hasil_search_ta():
 
         # Mengurutkan similarity tertinggi
         return sorted(similarities, key=lambda x: -x['similarity'])
-
-    def get_random_docs(limit=5):
-        conn = ensure_connection_dict()
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT id, judul FROM documents ORDER BY RAND() LIMIT %s",(limit,))
-            rows = cursor.fetchall()
-        
-        results = []
-        for row in rows:
-            results.append({
-                'id': row['id'],
-                'judul': row['judul'],
-                'similarity': 0.0
-            })
-        return results
         
     # Hasil rekomendasi
     pref_results = []
     general_results = []
 
-    testing_mode = "random"
-    if testing_mode == "random":
-        pref_results = get_random_docs(5)
-        general_results = get_random_docs(5)
-
-    else:
-        if user_token:
-            if session_id:
-                try:
-                    pref_results = get_preference_similarities()[:5]
-                    general_results = get_top_similarities(preprocessed_title, dominant_topic)[:5]
-                    # Fallback
-                    if not pref_results:
-                        pref_results = random.sample(general_results, min(5, len(general_results)))
-                except Exception as e:
-                    print("Error saat ambil rekomendasi dengan preferensi: ", e)
-            else:
-                try:
-                    general_results = get_top_similarities(preprocessed_title, dominant_topic)[:10]
-                except Exception as e:
-                    print("Tidak bisa menampilkan rekomendasi dari topik: ", e)
+    if user_token:
+        if session_id:
+            try:
+                pref_results = get_preference_similarities()[:5]
+                general_results = get_top_similarities(preprocessed_title, dominant_topic)[:5]
+                # Fallback
+                if not pref_results:
+                    pref_results = random.sample(general_results, min(5, len(general_results)))
+            except Exception as e:
+                print("Error saat ambil rekomendasi dengan preferensi: ", e)
         else:
-            general_results = get_top_similarities(preprocessed_title, dominant_topic)[:10]
+            try:
+                general_results = get_top_similarities(preprocessed_title, dominant_topic)[:10]
+            except Exception as e:
+                print("Tidak bisa menampilkan rekomendasi dari topik: ", e)
+    else:
+        general_results = get_top_similarities(preprocessed_title, dominant_topic)[:10]
 
     # Simpan log rekomendasi jika pakai cookie
     if session.get('consent_given'):
